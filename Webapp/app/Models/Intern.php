@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Intern extends Model
@@ -51,5 +52,22 @@ class Intern extends Model
     public function evaluations(): HasMany
     {
         return $this->hasMany(Evaluation::class);
+    }
+
+    public function supervisorAssignments(): HasMany
+    {
+        return $this->hasMany(InternSupervisorAssignment::class);
+    }
+
+    public function supervisors(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            User::class,
+            InternSupervisorAssignment::class,
+            'intern_id',
+            'id',
+            'id',
+            'supervisor_id'
+        );
     }
 }

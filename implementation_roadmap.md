@@ -56,13 +56,20 @@ This document outlines the detailed technical plan for implementing the BJUKA In
 ---
 
 ## 🔐 Phase 2B: API Authentication
-**Goal:** Prepare the backend for secure mobile access.
+**Goal:** Prepare the backend for secure mobile access with refined security and semantics.
 
 ### 📅 Laravel (API)
 - **Setup:**
-  - Install and configure Laravel Sanctum or utilize existing Passkey infrastructure for APIs.
-  - Create `AuthAPIController` for login/logout and token issuance.
-  - Ensure CSRF/Stateful settings are correct for mobile vs web.
+  - Install and configure Laravel Sanctum.
+  - **Account Validation:** Login must verify user/intern status is `ACTIVE`.
+  - **Token Abilities:** Issue tokens with `['mobile-access']` ability.
+- **Endpoints:**
+  - `POST /api/login`: Returns standardized JSON `{token, user}`.
+  - `GET /api/me`: Returns current user profile (preferred over /user).
+  - `POST /api/logout`: Revokes current token.
+- **Reserved for Future:**
+  - `GET /api/devices`: List all active tokens/devices.
+  - `DELETE /api/devices/{token_id}`: Revoke a specific session.
 
 ---
 
@@ -92,18 +99,17 @@ This document outlines the detailed technical plan for implementing the BJUKA In
 ---
 
 ## 📡 Phase 5: Attendance Module (Mobile Focus)
-**Goal:** WiFi-validated check-in/out with dual timestamps.
+**Goal:** WiFi-validated check-in/out with dual timestamps and scoped abilities.
 
 ### 📅 Laravel (API)
-- **Routes:** `routes/api.php`.
 - **Endpoints:**
-  - `POST /api/attendance/check-in`: Validates WiFi against `approved_networks`, stores device/server time.
-  - `POST /api/attendance/check-out`: Updates record with dual timestamps and calculates `work_duration_minutes`.
+  - `POST /api/attendance/check-in`: Requires `attendance:create` ability.
+  - `POST /api/attendance/check-out`: Requires `attendance:create` ability.
 - **Controller:** `Api/AttendanceController`.
 
 ### 📱 Mobile (Flutter)
 - **Screens:** `lib/screens/attendance/attendance_screen.dart`.
-- **Services:** `lib/services/wifi_service.dart` (using `network_info_plus`).
+- **Services:** `lib/services/wifi_service.dart`.
 - **Logic:** Fetch approved networks for the intern's batch from API; validate local WiFi details before submission.
 
 ---

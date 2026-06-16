@@ -7,12 +7,14 @@ use App\Enums\BatchStatus;
 use App\Enums\EvaluationType;
 use App\Enums\InternStatus;
 use App\Enums\NoteCategory;
+use App\Enums\UserRole;
 use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\DailyLearningLog;
 use App\Models\Evaluation;
 use App\Models\Intern;
 use App\Models\InternshipBatch;
+use App\Models\InternSupervisorAssignment;
 use App\Models\SupervisorNote;
 use App\Models\User;
 use Carbon\Carbon;
@@ -25,10 +27,19 @@ class InternshipSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Create Supervisors
-        $supervisors = User::factory()->count(3)->create();
+        // 1. Create Admins
+        User::factory()->create([
+            'name' => 'System Admin',
+            'email' => 'admin@bjuka.io',
+            'role' => UserRole::ADMIN,
+        ]);
 
-        // 2. Create 2 Internship Batches
+        // 2. Create Supervisors
+        $supervisors = User::factory()->count(3)->create([
+            'role' => UserRole::SUPERVISOR,
+        ]);
+
+        // 3. Create 2 Internship Batches
         $batches = [
             InternshipBatch::factory()->create([
                 'name' => 'Spring 2026 Batch',
@@ -45,34 +56,40 @@ class InternshipSeeder extends Seeder
         ];
 
         foreach ($batches as $batch) {
-            // 3. Create 1 Approved Network per Batch
+            // 4. Create 1 Approved Network per Batch
             ApprovedNetwork::factory()->create([
                 'batch_id' => $batch->id,
                 'name' => $batch->name.' Office WiFi',
-                'ssid' => 'BJUKA_WIFI_'.strtoupper($batch->id),
+                'ssid' => 'BJUKA_WIFI_'.strtoupper(substr($batch->id, 0, 4)),
             ]);
 
-            // 4. Create Interns (10 total)
+            // 5. Create Interns (10 total)
             $interns = Intern::factory()->count(5)->create([
                 'batch_id' => $batch->id,
                 'status' => InternStatus::ACTIVE,
             ]);
 
-            // 5. Generate heavy data for interns in the active batch
-            if ($batch->status === BatchStatus::ACTIVE) {
-                foreach ($interns as $index => $intern) {
-                    // Only generate heavy data for 5 interns total (first 5 across all active logic)
-                    if ($index >= 5) {
-                        continue;
-                    }
+            foreach ($interns as $intern) {
+                // Assign role to the user associated with the intern
+                $intern->user->update(['role' => UserRole::INTERN]);
 
-                    $this->generateInternActivity($intern, $supervisors);
+                // 6. Create Supervisor Assignments
+                $supervisor = $supervisors->random();
+                InternSupervisorAssignment::create([
+                    'intern_id' => $intern->id,
+                    'supervisor_id' => $supervisor->id,
+                    'assigned_at' => now(),
+                ]);
+
+                // 7. Generate heavy data for interns in the active batch
+                if ($batch->status === BatchStatus::ACTIVE) {
+                    $this->generateInternActivity($intern, $supervisor);
                 }
             }
         }
     }
 
-    private function generateInternActivity(Intern $intern, $supervisors): void
+    private function generateInternActivity(Intern $intern, User $assignedSupervisor): void
     {
         $startDate = $intern->batch->start_date;
         $numDays = rand(20, 30);
@@ -115,24 +132,24 @@ class InternshipSeeder extends Seeder
                     'wifi_bssid' => '00:11:22:33:44:55',
                 ]);
 
-                // 6. Daily Learning Logs
+                // 8. Daily Learning Logs
                 DailyLearningLog::factory()->create([
                     'attendance_id' => $attendance->id,
                 ]);
             }
         }
 
-        // 7. Supervisor Notes (2-4 per intern)
+        // 9. Supervisor Notes (2-4 per intern)
         SupervisorNote::factory()->count(rand(2, 4))->create([
             'intern_id' => $intern->id,
-            'supervisor_id' => $supervisors->random()->id,
+            'supervisor_id' => $assignedSupervisor->id,
             'category' => NoteCategory::TECHNICAL,
         ]);
 
-        // 8. Periodic Evaluations (1 per intern)
+        // 10. Periodic Evaluations (1 per intern)
         Evaluation::factory()->create([
             'intern_id' => $intern->id,
-            'supervisor_id' => $supervisors->random()->id,
+            'supervisor_id' => $assignedSupervisor->id,
             'evaluation_type' => EvaluationType::PERIODIC,
         ]);
     }
