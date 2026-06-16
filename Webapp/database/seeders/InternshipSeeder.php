@@ -1,0 +1,139 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\AttendanceStatus;
+use App\Enums\BatchStatus;
+use App\Enums\EvaluationType;
+use App\Enums\InternStatus;
+use App\Enums\NoteCategory;
+use App\Models\ApprovedNetwork;
+use App\Models\Attendance;
+use App\Models\DailyLearningLog;
+use App\Models\Evaluation;
+use App\Models\Intern;
+use App\Models\InternshipBatch;
+use App\Models\SupervisorNote;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Database\Seeder;
+
+class InternshipSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        // 1. Create Supervisors
+        $supervisors = User::factory()->count(3)->create();
+
+        // 2. Create 2 Internship Batches
+        $batches = [
+            InternshipBatch::factory()->create([
+                'name' => 'Spring 2026 Batch',
+                'status' => BatchStatus::ACTIVE,
+                'start_date' => Carbon::now()->subMonths(2),
+                'end_date' => Carbon::now()->addMonths(1),
+            ]),
+            InternshipBatch::factory()->create([
+                'name' => 'Winter 2025 Batch',
+                'status' => BatchStatus::CLOSED,
+                'start_date' => Carbon::now()->subMonths(6),
+                'end_date' => Carbon::now()->subMonths(3),
+            ]),
+        ];
+
+        foreach ($batches as $batch) {
+            // 3. Create 1 Approved Network per Batch
+            ApprovedNetwork::factory()->create([
+                'batch_id' => $batch->id,
+                'name' => $batch->name.' Office WiFi',
+                'ssid' => 'BJUKA_WIFI_'.strtoupper($batch->id),
+            ]);
+
+            // 4. Create Interns (10 total)
+            $interns = Intern::factory()->count(5)->create([
+                'batch_id' => $batch->id,
+                'status' => InternStatus::ACTIVE,
+            ]);
+
+            // 5. Generate heavy data for interns in the active batch
+            if ($batch->status === BatchStatus::ACTIVE) {
+                foreach ($interns as $index => $intern) {
+                    // Only generate heavy data for 5 interns total (first 5 across all active logic)
+                    if ($index >= 5) {
+                        continue;
+                    }
+
+                    $this->generateInternActivity($intern, $supervisors);
+                }
+            }
+        }
+    }
+
+    private function generateInternActivity(Intern $intern, $supervisors): void
+    {
+        $startDate = $intern->batch->start_date;
+        $numDays = rand(20, 30);
+
+        for ($i = 0; $i < $numDays; $i++) {
+            $currentDate = (clone $startDate)->addDays($i);
+
+            // Skip weekends
+            if ($currentDate->isWeekend()) {
+                continue;
+            }
+            if ($currentDate->isAfter(Carbon::now())) {
+                break;
+            }
+
+            // 90% attendance rate
+            if (rand(1, 100) > 10) {
+                // Realistic check-in around 08:00 - 09:00
+                $checkInBase = (clone $currentDate)->setHour(rand(8, 9))->setMinute(rand(0, 59));
+
+                // Determine status based on time
+                $status = AttendanceStatus::PRESENT;
+                if ($checkInBase->hour >= 9 && $checkInBase->minute > 0) {
+                    $status = AttendanceStatus::LATE;
+                }
+
+                $checkOutBase = (clone $checkInBase)->addHours(rand(7, 9));
+                $duration = $checkInBase->diffInMinutes($checkOutBase);
+
+                $attendance = Attendance::create([
+                    'intern_id' => $intern->id,
+                    'date' => $currentDate->toDateString(),
+                    'check_in_device_time' => $checkInBase->subMinutes(rand(0, 5)),
+                    'check_in_server_time' => $checkInBase,
+                    'check_out_device_time' => $checkOutBase->addMinutes(rand(0, 5)),
+                    'check_out_server_time' => $checkOutBase,
+                    'work_duration_minutes' => $duration,
+                    'status' => $status,
+                    'wifi_ssid' => $intern->batch->approvedNetworks->first()->ssid,
+                    'wifi_bssid' => '00:11:22:33:44:55',
+                ]);
+
+                // 6. Daily Learning Logs
+                DailyLearningLog::factory()->create([
+                    'attendance_id' => $attendance->id,
+                ]);
+            }
+        }
+
+        // 7. Supervisor Notes (2-4 per intern)
+        SupervisorNote::factory()->count(rand(2, 4))->create([
+            'intern_id' => $intern->id,
+            'supervisor_id' => $supervisors->random()->id,
+            'category' => NoteCategory::TECHNICAL,
+        ]);
+
+        // 8. Periodic Evaluations (1 per intern)
+        Evaluation::factory()->create([
+            'intern_id' => $intern->id,
+            'supervisor_id' => $supervisors->random()->id,
+            'evaluation_type' => EvaluationType::PERIODIC,
+        ]);
+    }
+}
