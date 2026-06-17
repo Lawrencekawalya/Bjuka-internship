@@ -19,10 +19,12 @@ class InternshipBatchFactory extends Factory
     public function definition(): array
     {
         return [
+            'batch_code' => 'INT-'.strtoupper($this->faker->unique()->bothify('??-####')),
             'name' => 'Batch '.$this->faker->unique()->word(),
             'description' => $this->faker->sentence(),
             'start_date' => $this->faker->dateTimeBetween('-1 month', 'now')->format('Y-m-d'),
             'end_date' => $this->faker->dateTimeBetween('now', '+3 months')->format('Y-m-d'),
+            'capacity' => $this->faker->numberBetween(10, 30),
             'expected_working_days' => $this->faker->numberBetween(40, 60),
             'status' => BatchStatus::ACTIVE,
         ];

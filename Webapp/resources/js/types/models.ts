@@ -1,0 +1,36 @@
+import type { User } from './auth';
+
+export interface ApprovedNetwork {
+    id: number;
+    name: string;
+    ssid: string;
+    bssid: string;
+}
+
+export interface InternshipBatch {
+    id: string;
+    batch_code: string;
+    name: string;
+    description: string | null;
+    start_date: string;
+    end_date: string;
+    capacity: number;
+    expected_working_days: number;
+    status: string;
+    virtual_status: string;
+    progress_percentage: number;
+    coordinator_id: number | null;
+    coordinator?: User;
+    interns_count?: number;
+    approved_networks?: ApprovedNetwork[];
+    created_at: string;
+    updated_at: string;
+}
+
+export interface BatchStats {
+    total_interns: number;
+    present_today: number;
+    attendance_rate: number;
+    total_supervisors: number;
+    progress: number;
+}

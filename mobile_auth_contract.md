@@ -40,10 +40,17 @@ This document serves as the technical specification for the handoff between the 
 *Note: `user.id` is an **Integer** (as established in Phase 1 for the existing `users` table).*
 
 ### Role-Based Routing Intent
-Flutter should use the `user.role` field to determine the initial dashboard view:
+Current mobile login is **intern-only**.
+
+The backend only returns `200 OK` from `/api/login` when:
+- the authenticated user has `role = intern`
+- the user has a related `Intern` profile
+- that `Intern` profile has `status = active`
+
+Flutter should currently route successful mobile logins to:
 - `intern` ➔ Navigate to `InternDashboard`
-- `supervisor` ➔ Navigate to `SupervisorDashboard` (Future)
-- `admin` ➔ Navigate to `AdminDashboard` (Future)
+
+Supervisor/admin mobile dashboards are future scope. Until that backend support is added, supervisor/admin users receive `403 Forbidden` from `/api/login`.
 
 ---
 
@@ -104,6 +111,16 @@ Accept: application/json
 ```json
 {
   "message": "Account is deactivated. Please contact your supervisor."
+}
+```
+
+This response is returned when the user has `role = intern` but does not have an active related `Intern` profile.
+
+### Non-Intern Mobile Login
+**Status:** `403 Forbidden`
+```json
+{
+  "message": "Unauthorized. Only interns can log in to the mobile app."
 }
 ```
 

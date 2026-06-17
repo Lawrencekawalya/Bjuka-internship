@@ -1,0 +1,177 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\BatchStatus;
+use App\Enums\UserRole;
+use App\Models\InternshipBatch;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class InternshipBatchTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->admin = User::factory()->create(['role' => UserRole::ADMIN]);
+    }
+
+    public function test_can_list_batches()
+    {
+        InternshipBatch::factory()->count(3)->create();
+
+        $response = $this->actingAs($this->admin)->get(route('batches.index'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('batches/Index'));
+    }
+
+    public function test_can_view_create_batch_page()
+    {
+        $response = $this->actingAs($this->admin)->get(route('batches.create'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('batches/Create'));
+    }
+
+    public function test_can_create_batch()
+    {
+        $data = [
+            'batch_code' => 'TEST-BATCH-001',
+            'name' => 'Test Batch',
+            'start_date' => now()->addDays(5)->toDateString(),
+            'end_date' => now()->addMonths(3)->toDateString(),
+            'capacity' => 25,
+            'expected_working_days' => 60,
+            'status' => BatchStatus::ACTIVE->value,
+        ];
+
+        $response = $this->actingAs($this->admin)->post(route('batches.store'), $data);
+
+        $response->assertRedirect(route('batches.index'));
+        $this->assertDatabaseHas('internship_batches', ['batch_code' => 'TEST-BATCH-001']);
+    }
+
+    public function test_can_view_edit_batch_page()
+    {
+        $batch = InternshipBatch::factory()->create();
+
+        $response = $this->actingAs($this->admin)->get(route('batches.edit', $batch));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) => $page->component('batches/Edit'));
+    }
+
+    public function test_can_update_batch()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'batch_code' => 'OLD-BATCH-001',
+            'name' => 'Old Batch Name',
+        ]);
+
+        $response = $this->actingAs($this->admin)->put(route('batches.update', $batch), [
+            'batch_code' => 'NEW-BATCH-001',
+            'name' => 'New Batch Name',
+            'description' => 'Updated batch description.',
+            'start_date' => now()->addDays(5)->toDateString(),
+            'end_date' => now()->addMonths(3)->toDateString(),
+            'capacity' => 30,
+            'expected_working_days' => 65,
+            'status' => BatchStatus::ACTIVE->value,
+        ]);
+
+        $response->assertRedirect(route('batches.index'));
+        $this->assertDatabaseHas('internship_batches', [
+            'id' => $batch->id,
+            'batch_code' => 'NEW-BATCH-001',
+            'name' => 'New Batch Name',
+            'expected_working_days' => 65,
+        ]);
+    }
+
+    public function test_can_close_batch()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'status' => BatchStatus::ACTIVE,
+        ]);
+
+        $response = $this->actingAs($this->admin)->patch(route('batches.close', $batch));
+
+        $response->assertRedirect(route('batches.show', $batch));
+        $this->assertDatabaseHas('internship_batches', [
+            'id' => $batch->id,
+            'status' => BatchStatus::CLOSED->value,
+        ]);
+    }
+
+    public function test_batch_validation_rejects_invalid_dates_and_status()
+    {
+        $response = $this->actingAs($this->admin)
+            ->from(route('batches.create'))
+            ->post(route('batches.store'), [
+                'batch_code' => 'TEST-BATCH-002',
+                'name' => 'Invalid Batch',
+                'start_date' => now()->addMonth()->toDateString(),
+                'end_date' => now()->addDays(5)->toDateString(),
+                'capacity' => 25,
+                'expected_working_days' => 60,
+                'status' => 'paused',
+            ]);
+
+        $response->assertRedirect(route('batches.create'));
+        $response->assertSessionHasErrors(['end_date', 'status']);
+        $this->assertDatabaseMissing('internship_batches', ['batch_code' => 'TEST-BATCH-002']);
+    }
+
+    public function test_non_admin_cannot_manage_batches()
+    {
+        $supervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+        $batch = InternshipBatch::factory()->create();
+
+        $this->actingAs($supervisor)->get(route('batches.index'))->assertForbidden();
+        $this->actingAs($supervisor)->get(route('batches.create'))->assertForbidden();
+        $this->actingAs($supervisor)->get(route('batches.edit', $batch))->assertForbidden();
+        $this->actingAs($supervisor)->patch(route('batches.close', $batch))->assertForbidden();
+        $this->actingAs($supervisor)->delete(route('batches.destroy', $batch))->assertForbidden();
+    }
+
+    public function test_virtual_status_is_upcoming_for_future_active_batch()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'status' => BatchStatus::ACTIVE,
+            'start_date' => now()->addDays(10),
+            'end_date' => now()->addMonths(3),
+        ]);
+
+        $this->assertEquals('upcoming', $batch->virtual_status);
+    }
+
+    public function test_virtual_status_is_active_for_current_active_batch()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'status' => BatchStatus::ACTIVE,
+            'start_date' => now()->subDays(5),
+            'end_date' => now()->addMonths(2),
+        ]);
+
+        $this->assertEquals('active', $batch->virtual_status);
+    }
+
+    public function test_can_archive_batch()
+    {
+        $batch = InternshipBatch::factory()->create();
+
+        $response = $this->actingAs($this->admin)->delete(route('batches.destroy', $batch->id));
+
+        $response->assertRedirect(route('batches.index'));
+
+        $batch->refresh();
+        $this->assertNotNull($batch->deleted_at);
+        $this->assertTrue($batch->trashed());
+    }
+}

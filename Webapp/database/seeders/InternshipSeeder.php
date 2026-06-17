@@ -66,16 +66,20 @@ class InternshipSeeder extends Seeder
         // 3. Create 2 Internship Batches
         $batches = [
             InternshipBatch::factory()->create([
+                'batch_code' => 'SPRING-2026',
                 'name' => 'Spring 2026 Batch',
                 'status' => BatchStatus::ACTIVE,
                 'start_date' => Carbon::now()->subMonths(2),
                 'end_date' => Carbon::now()->addMonths(1),
+                'capacity' => 20,
             ]),
             InternshipBatch::factory()->create([
+                'batch_code' => 'WINTER-2025',
                 'name' => 'Winter 2025 Batch',
                 'status' => BatchStatus::CLOSED,
                 'start_date' => Carbon::now()->subMonths(6),
                 'end_date' => Carbon::now()->subMonths(3),
+                'capacity' => 15,
             ]),
         ];
 
