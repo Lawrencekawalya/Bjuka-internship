@@ -27,16 +27,40 @@ class InternshipSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Create Admins
+        // 1. Create one user for each administrative/staff role
         User::factory()->create([
             'name' => 'System Admin',
             'email' => 'admin@bjuka.io',
             'role' => UserRole::ADMIN,
         ]);
 
-        // 2. Create Supervisors
+        User::factory()->create([
+            'name' => 'HR Manager',
+            'email' => 'hr@bjuka.io',
+            'role' => UserRole::HR,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Project Manager',
+            'email' => 'manager@bjuka.io',
+            'role' => UserRole::MANAGER,
+        ]);
+
+        User::factory()->create([
+            'name' => 'Center Director',
+            'email' => 'director@bjuka.io',
+            'role' => UserRole::CENTER_DIRECTOR,
+        ]);
+
+        // 2. Create Supervisors (Keeping a few for assignments)
         $supervisors = User::factory()->count(3)->create([
             'role' => UserRole::SUPERVISOR,
+        ]);
+
+        // Specific supervisor for testing
+        $supervisors->first()->update([
+            'name' => 'Lead Supervisor',
+            'email' => 'supervisor@bjuka.io',
         ]);
 
         // 3. Create 2 Internship Batches
