@@ -6,9 +6,9 @@ enum AttendanceAction { checkIn, checkOut }
 
 class WifiInfo {
   final String ssid;
-  final String bssid;
+  final String? bssid;
 
-  WifiInfo({required this.ssid, required this.bssid});
+  WifiInfo({required this.ssid, this.bssid});
 }
 
 class WifiInfoService {
@@ -43,9 +43,9 @@ class WifiInfoService {
     final ssid = _cleanWifiValue(rawSsid);
     final bssid = _cleanWifiValue(rawBssid);
 
-    if (ssid == null || bssid == null) {
+    if (ssid == null) {
       throw WifiInfoException(
-        'Connect to the office Wi-Fi before ${_actionLabel(action)}.',
+        'Unable to identify the connected Wi-Fi. Turn on Wi-Fi and location, then try ${_actionLabel(action)} again.',
       );
     }
 

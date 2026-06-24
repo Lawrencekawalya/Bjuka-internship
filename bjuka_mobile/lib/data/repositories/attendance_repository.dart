@@ -13,7 +13,7 @@ class AttendanceRepository {
 
   Future<Attendance> checkIn({
     required String wifiSsid,
-    required String wifiBssid,
+    String? wifiBssid,
   }) async {
     final response = await _dio.post(
       '/attendance/check-in',
@@ -29,7 +29,7 @@ class AttendanceRepository {
 
   Future<Attendance> checkOut({
     required String wifiSsid,
-    required String wifiBssid,
+    String? wifiBssid,
   }) async {
     final response = await _dio.post(
       '/attendance/check-out',
