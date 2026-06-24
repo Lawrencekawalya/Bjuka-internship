@@ -91,11 +91,28 @@ class InternshipSeeder extends Seeder
                 'ssid' => 'BJUKA_WIFI_'.strtoupper(substr($batch->id, 0, 4)),
             ]);
 
-            // 5. Create Interns (10 total)
-            $interns = Intern::factory()->count(5)->create([
+            $seededInterns = collect();
+
+            if ($batch->status === BatchStatus::ACTIVE) {
+                $demoUser = User::factory()->create([
+                    'name' => 'Demo Intern',
+                    'email' => 'intern@bjuka.io',
+                    'role' => UserRole::INTERN,
+                ]);
+
+                $seededInterns->push(Intern::factory()->create([
+                    'user_id' => $demoUser->id,
+                    'batch_id' => $batch->id,
+                    'registration_number' => 'REG-DEMO',
+                    'status' => InternStatus::ACTIVE,
+                ]));
+            }
+
+            // 5. Create Interns (10 total, including the documented demo intern)
+            $interns = $seededInterns->merge(Intern::factory()->count(5 - $seededInterns->count())->create([
                 'batch_id' => $batch->id,
                 'status' => InternStatus::ACTIVE,
-            ]);
+            ]));
 
             foreach ($interns as $intern) {
                 // Assign role to the user associated with the intern

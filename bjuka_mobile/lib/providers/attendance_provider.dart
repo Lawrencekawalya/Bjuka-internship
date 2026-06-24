@@ -1,0 +1,143 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/models/attendance_model.dart';
+import '../data/repositories/attendance_repository.dart';
+import 'providers.dart';
+
+class AttendanceState {
+  final bool isLoading;
+  final bool isSubmitting;
+  final Attendance? attendance;
+  final bool canCheckIn;
+  final bool canCheckOut;
+  final String? errorMessage;
+  final String? successMessage;
+
+  AttendanceState({
+    required this.isLoading,
+    required this.isSubmitting,
+    required this.canCheckIn,
+    required this.canCheckOut,
+    this.attendance,
+    this.errorMessage,
+    this.successMessage,
+  });
+
+  factory AttendanceState.initial() {
+    return AttendanceState(
+      isLoading: true,
+      isSubmitting: false,
+      canCheckIn: false,
+      canCheckOut: false,
+    );
+  }
+
+  AttendanceState copyWith({
+    bool? isLoading,
+    bool? isSubmitting,
+    Attendance? attendance,
+    bool? canCheckIn,
+    bool? canCheckOut,
+    String? errorMessage,
+    String? successMessage,
+    bool clearAttendance = false,
+    bool clearMessages = false,
+  }) {
+    return AttendanceState(
+      isLoading: isLoading ?? this.isLoading,
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      attendance: clearAttendance ? null : attendance ?? this.attendance,
+      canCheckIn: canCheckIn ?? this.canCheckIn,
+      canCheckOut: canCheckOut ?? this.canCheckOut,
+      errorMessage: clearMessages ? null : errorMessage,
+      successMessage: clearMessages ? null : successMessage,
+    );
+  }
+}
+
+class AttendanceNotifier extends Notifier<AttendanceState> {
+  @override
+  AttendanceState build() {
+    return AttendanceState.initial();
+  }
+
+  AttendanceRepository get _repository =>
+      ref.read(attendanceRepositoryProvider);
+
+  Future<void> loadToday() async {
+    state = state.copyWith(isLoading: true, clearMessages: true);
+
+    try {
+      final response = await _repository.getToday();
+      state = state.copyWith(
+        isLoading: false,
+        attendance: response.attendance,
+        clearAttendance: response.attendance == null,
+        canCheckIn: response.canCheckIn,
+        canCheckOut: response.canCheckOut,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _messageForError(e),
+      );
+    }
+  }
+
+  Future<void> checkIn() async {
+    state = state.copyWith(isSubmitting: true, clearMessages: true);
+
+    try {
+      final attendance = await _repository.checkIn();
+      state = state.copyWith(
+        isSubmitting: false,
+        attendance: attendance,
+        canCheckIn: false,
+        canCheckOut: attendance.checkOutServerTime == null,
+        successMessage: 'Checked in successfully.',
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _messageForError(e),
+      );
+    }
+  }
+
+  Future<void> checkOut() async {
+    state = state.copyWith(isSubmitting: true, clearMessages: true);
+
+    try {
+      final attendance = await _repository.checkOut();
+      state = state.copyWith(
+        isSubmitting: false,
+        attendance: attendance,
+        canCheckIn: false,
+        canCheckOut: false,
+        successMessage: 'Checked out successfully.',
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isSubmitting: false,
+        errorMessage: _messageForError(e),
+      );
+    }
+  }
+
+  String _messageForError(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+
+      if (data is Map<String, dynamic> && data['message'] is String) {
+        return data['message'];
+      }
+
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return 'Connection timed out. Please try again.';
+      }
+    }
+
+    return 'Something went wrong. Please try again.';
+  }
+}
