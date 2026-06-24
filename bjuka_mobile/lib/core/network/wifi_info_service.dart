@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+enum AttendanceAction { checkIn, checkOut }
 
 class WifiInfo {
   final String ssid;
@@ -14,20 +17,35 @@ class WifiInfoService {
   WifiInfoService({NetworkInfo? networkInfo})
     : _networkInfo = networkInfo ?? NetworkInfo();
 
-  Future<WifiInfo> currentWifi() async {
-    final permission = await Permission.locationWhenInUse.request();
-    if (!permission.isGranted) {
+  Future<WifiInfo> currentWifi({required AttendanceAction action}) async {
+    final locationPermission = await Permission.locationWhenInUse.request();
+    if (!locationPermission.isGranted) {
       throw WifiInfoException(
         'Location permission is required to verify office Wi-Fi.',
       );
     }
 
-    final ssid = _cleanWifiValue(await _networkInfo.getWifiName());
-    final bssid = _cleanWifiValue(await _networkInfo.getWifiBSSID());
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await Permission.nearbyWifiDevices.request();
+    }
+
+    final String? rawSsid;
+    final String? rawBssid;
+    try {
+      rawSsid = await _networkInfo.getWifiName();
+      rawBssid = await _networkInfo.getWifiBSSID();
+    } catch (_) {
+      throw WifiInfoException(
+        'Unable to read Wi-Fi details. Turn on Wi-Fi and location, then try again.',
+      );
+    }
+
+    final ssid = _cleanWifiValue(rawSsid);
+    final bssid = _cleanWifiValue(rawBssid);
 
     if (ssid == null || bssid == null) {
       throw WifiInfoException(
-        'Connect to the office Wi-Fi before checking in.',
+        'Connect to the office Wi-Fi before ${_actionLabel(action)}.',
       );
     }
 
@@ -41,6 +59,13 @@ class WifiInfoService {
     }
 
     return cleaned;
+  }
+
+  String _actionLabel(AttendanceAction action) {
+    return switch (action) {
+      AttendanceAction.checkIn => 'checking in',
+      AttendanceAction.checkOut => 'checking out',
+    };
   }
 }
 

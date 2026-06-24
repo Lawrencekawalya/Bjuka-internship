@@ -90,7 +90,9 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     state = state.copyWith(isSubmitting: true, clearMessages: true);
 
     try {
-      final wifi = await _wifiInfo.currentWifi();
+      final wifi = await _wifiInfo.currentWifi(
+        action: AttendanceAction.checkIn,
+      );
       final attendance = await _repository.checkIn(
         wifiSsid: wifi.ssid,
         wifiBssid: wifi.bssid,
@@ -114,7 +116,9 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     state = state.copyWith(isSubmitting: true, clearMessages: true);
 
     try {
-      final wifi = await _wifiInfo.currentWifi();
+      final wifi = await _wifiInfo.currentWifi(
+        action: AttendanceAction.checkOut,
+      );
       final attendance = await _repository.checkOut(
         wifiSsid: wifi.ssid,
         wifiBssid: wifi.bssid,
