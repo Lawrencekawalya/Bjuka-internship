@@ -433,63 +433,77 @@ class _ActionPanel extends ConsumerWidget {
   }
 
   Future<String?> _showActivitiesDialog(BuildContext context) {
-    final controller = TextEditingController();
-
     return showDialog<String>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final activities = controller.text.trim();
-            final wordCount = _wordCount(activities);
-            final canSubmit = activities.isNotEmpty && wordCount <= 70;
+      builder: (context) => const _ActivitiesDialog(),
+    );
+  }
+}
 
-            return AlertDialog(
-              title: const Text('Today\'s activities'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    minLines: 4,
-                    maxLines: 6,
-                    maxLength: 500,
-                    textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      hintText: 'Summarize what you worked on today.',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                  Text(
-                    '$wordCount / 70 words',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: wordCount > 70
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: canSubmit
-                      ? () => Navigator.of(context).pop(activities)
-                      : null,
-                  child: const Text('Check Out'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(controller.dispose);
+class _ActivitiesDialog extends StatefulWidget {
+  const _ActivitiesDialog();
+
+  @override
+  State<_ActivitiesDialog> createState() => _ActivitiesDialogState();
+}
+
+class _ActivitiesDialogState extends State<_ActivitiesDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activities = _controller.text.trim();
+    final wordCount = _wordCount(activities);
+    final canSubmit = activities.isNotEmpty && wordCount <= 70;
+
+    return AlertDialog(
+      title: const Text('Today\'s activities'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            minLines: 4,
+            maxLines: 6,
+            maxLength: 500,
+            textInputAction: TextInputAction.newline,
+            decoration: const InputDecoration(
+              hintText: 'Summarize what you worked on today.',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          Text(
+            '$wordCount / 70 words',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: wordCount > 70
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: canSubmit
+              ? () => Navigator.of(context).pop(activities)
+              : null,
+          child: const Text('Check Out'),
+        ),
+      ],
+    );
   }
 }
 
