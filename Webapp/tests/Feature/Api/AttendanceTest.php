@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use App\Enums\InternStatus;
 use App\Enums\UserRole;
 use App\Models\Attendance;
+use App\Models\ApprovedNetwork;
 use App\Models\Intern;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +21,7 @@ class AttendanceTest extends TestCase
     {
         Carbon::setTestNow('2026-06-24 08:30:00');
         $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
 
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/attendance/check-in', [
@@ -39,10 +41,40 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    public function test_intern_cannot_check_in_without_wifi_details(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['wifi_ssid', 'wifi_bssid']);
+    }
+
+    public function test_intern_cannot_check_in_from_unapproved_wifi(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => 'HOME_WIFI',
+                'wifi_bssid' => '66:77:88:99:AA:BB',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'You must be connected to an approved office Wi-Fi network to check in.');
+    }
+
     public function test_intern_cannot_check_in_twice_on_same_day(): void
     {
         Carbon::setTestNow('2026-06-24 08:30:00');
         $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
 
         Attendance::factory()->create([
             'intern_id' => $user->intern->id,
@@ -51,7 +83,11 @@ class AttendanceTest extends TestCase
         ]);
 
         $this->actingAs($user, 'sanctum')
-            ->postJson('/api/attendance/check-in')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'wifi_bssid' => '00:11:22:33:44:55',
+            ])
             ->assertStatus(409)
             ->assertJsonPath('message', 'You have already checked in today.');
     }
@@ -60,6 +96,7 @@ class AttendanceTest extends TestCase
     {
         Carbon::setTestNow('2026-06-24 08:30:00');
         $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
 
         $attendance = Attendance::factory()->create([
             'intern_id' => $user->intern->id,
@@ -72,6 +109,8 @@ class AttendanceTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')
             ->postJson('/api/attendance/check-out', [
                 'device_time' => '2026-06-24T16:59:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'wifi_bssid' => '00:11:22:33:44:55',
             ]);
 
         $response->assertOk()
@@ -81,6 +120,51 @@ class AttendanceTest extends TestCase
             'id' => $attendance->id,
             'work_duration_minutes' => 510,
         ]);
+    }
+
+    public function test_intern_cannot_check_out_without_wifi_details(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => now(),
+        ]);
+
+        Carbon::setTestNow('2026-06-24 17:00:00');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-out', [
+                'device_time' => '2026-06-24T16:59:00+03:00',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['wifi_ssid', 'wifi_bssid']);
+    }
+
+    public function test_intern_cannot_check_out_from_unapproved_wifi(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => now(),
+        ]);
+
+        Carbon::setTestNow('2026-06-24 17:00:00');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-out', [
+                'device_time' => '2026-06-24T16:59:00+03:00',
+                'wifi_ssid' => 'HOME_WIFI',
+                'wifi_bssid' => '66:77:88:99:AA:BB',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'You must be connected to an approved office Wi-Fi network to check out.');
     }
 
     public function test_today_endpoint_returns_current_attendance_state(): void
@@ -106,6 +190,15 @@ class AttendanceTest extends TestCase
         ]);
 
         return $user->load('intern');
+    }
+
+    private function approvedNetworkFor(User $user): ApprovedNetwork
+    {
+        return ApprovedNetwork::factory()->create([
+            'batch_id' => $user->intern->batch_id,
+            'ssid' => 'BJUKA_WIFI',
+            'bssid' => '00:11:22:33:44:55',
+        ]);
     }
 
     protected function tearDown(): void

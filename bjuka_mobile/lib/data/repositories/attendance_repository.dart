@@ -11,19 +11,33 @@ class AttendanceRepository {
     return AttendanceStateResponse.fromJson(response.data);
   }
 
-  Future<Attendance> checkIn() async {
+  Future<Attendance> checkIn({
+    required String wifiSsid,
+    required String wifiBssid,
+  }) async {
     final response = await _dio.post(
       '/attendance/check-in',
-      data: {'device_time': DateTime.now().toUtc().toIso8601String()},
+      data: {
+        'device_time': DateTime.now().toUtc().toIso8601String(),
+        'wifi_ssid': wifiSsid,
+        'wifi_bssid': wifiBssid,
+      },
     );
 
     return Attendance.fromJson(response.data['attendance']);
   }
 
-  Future<Attendance> checkOut() async {
+  Future<Attendance> checkOut({
+    required String wifiSsid,
+    required String wifiBssid,
+  }) async {
     final response = await _dio.post(
       '/attendance/check-out',
-      data: {'device_time': DateTime.now().toUtc().toIso8601String()},
+      data: {
+        'device_time': DateTime.now().toUtc().toIso8601String(),
+        'wifi_ssid': wifiSsid,
+        'wifi_bssid': wifiBssid,
+      },
     );
 
     return Attendance.fromJson(response.data['attendance']);

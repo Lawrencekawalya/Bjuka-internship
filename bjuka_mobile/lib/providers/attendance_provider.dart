@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/network/wifi_info_service.dart';
 import '../data/models/attendance_model.dart';
 import '../data/repositories/attendance_repository.dart';
 import 'providers.dart';
@@ -63,6 +64,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
 
   AttendanceRepository get _repository =>
       ref.read(attendanceRepositoryProvider);
+  WifiInfoService get _wifiInfo => ref.read(wifiInfoProvider);
 
   Future<void> loadToday() async {
     state = state.copyWith(isLoading: true, clearMessages: true);
@@ -88,7 +90,11 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     state = state.copyWith(isSubmitting: true, clearMessages: true);
 
     try {
-      final attendance = await _repository.checkIn();
+      final wifi = await _wifiInfo.currentWifi();
+      final attendance = await _repository.checkIn(
+        wifiSsid: wifi.ssid,
+        wifiBssid: wifi.bssid,
+      );
       state = state.copyWith(
         isSubmitting: false,
         attendance: attendance,
@@ -108,7 +114,11 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     state = state.copyWith(isSubmitting: true, clearMessages: true);
 
     try {
-      final attendance = await _repository.checkOut();
+      final wifi = await _wifiInfo.currentWifi();
+      final attendance = await _repository.checkOut(
+        wifiSsid: wifi.ssid,
+        wifiBssid: wifi.bssid,
+      );
       state = state.copyWith(
         isSubmitting: false,
         attendance: attendance,
@@ -125,6 +135,10 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
   }
 
   String _messageForError(Object error) {
+    if (error is WifiInfoException) {
+      return error.message;
+    }
+
     if (error is DioException) {
       final data = error.response?.data;
 

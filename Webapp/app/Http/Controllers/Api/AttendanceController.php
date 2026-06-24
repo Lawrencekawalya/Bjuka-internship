@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use App\Enums\InternStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
+use App\Models\ApprovedNetwork;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
@@ -36,8 +37,8 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'device_time' => ['nullable', 'date'],
-            'wifi_ssid' => ['nullable', 'string', 'max:255'],
-            'wifi_bssid' => ['nullable', 'string', 'max:255'],
+            'wifi_ssid' => ['required', 'string', 'max:255'],
+            'wifi_bssid' => ['required', 'string', 'max:255'],
         ]);
 
         $intern = $request->user()->intern;
@@ -52,6 +53,12 @@ class AttendanceController extends Controller
             return response()->json([
                 'message' => 'You have already checked in today.',
             ], 409);
+        }
+
+        if (! $this->isApprovedNetwork($intern->batch_id, $validated['wifi_ssid'], $validated['wifi_bssid'])) {
+            return response()->json([
+                'message' => 'You must be connected to an approved office Wi-Fi network to check in.',
+            ], 403);
         }
 
         $serverTime = now();
@@ -75,6 +82,8 @@ class AttendanceController extends Controller
     {
         $validated = $request->validate([
             'device_time' => ['nullable', 'date'],
+            'wifi_ssid' => ['required', 'string', 'max:255'],
+            'wifi_bssid' => ['required', 'string', 'max:255'],
         ]);
 
         $intern = $request->user()->intern;
@@ -97,6 +106,12 @@ class AttendanceController extends Controller
             return response()->json([
                 'message' => 'You have already checked out today.',
             ], 409);
+        }
+
+        if (! $this->isApprovedNetwork($intern->batch_id, $validated['wifi_ssid'], $validated['wifi_bssid'])) {
+            return response()->json([
+                'message' => 'You must be connected to an approved office Wi-Fi network to check out.',
+            ], 403);
         }
 
         $serverTime = now();
@@ -134,6 +149,15 @@ class AttendanceController extends Controller
         return $serverTime->greaterThan($serverTime->copy()->setTime(9, 0))
             ? AttendanceStatus::LATE
             : AttendanceStatus::PRESENT;
+    }
+
+    private function isApprovedNetwork(string $batchId, string $ssid, string $bssid): bool
+    {
+        return ApprovedNetwork::query()
+            ->where('batch_id', $batchId)
+            ->where('ssid', $ssid)
+            ->whereRaw('lower(bssid) = ?', [strtolower($bssid)])
+            ->exists();
     }
 
     /**
