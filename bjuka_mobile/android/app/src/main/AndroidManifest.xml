@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
     <application
-        android:label="bjuka_internship_app"
+        android:label="B. JUKA Technologies"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 300" role="img" aria-label="B. JUKA Technologies logo">
+  <defs>
+    <linearGradient id="bjukaGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#004D86"/>
+      <stop offset="48%" stop-color="#00A9D8"/>
+      <stop offset="100%" stop-color="#004D86"/>
+    </linearGradient>
+  </defs>
+  <rect width="840" height="300" fill="#FFFFFF"/>
+  <g fill="none" stroke="#004D86" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 125 L130 65 H265"/>
+    <path d="M55 165 L120 100 H305"/>
+    <path d="M70 205 L135 135 H185"/>
+    <path d="M105 235 V165 L160 110"/>
+    <circle cx="265" cy="65" r="12"/>
+    <circle cx="305" cy="100" r="12"/>
+    <circle cx="185" cy="135" r="12"/>
+    <circle cx="105" cy="235" r="12"/>
+  </g>
+  <text x="190" y="175" fill="url(#bjukaGradient)" font-family="Arial, Helvetica, sans-serif" font-size="112" font-weight="900" letter-spacing="0">B. JUKA</text>
+  <text x="380" y="245" fill="#004D86" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" letter-spacing="0">Technologies</text>
+  <g fill="none" stroke="#004D86" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M750 120 V180 L715 215"/>
+    <path d="M780 110 V190 L735 235"/>
+    <path d="M805 145 V205 L780 230"/>
+    <circle cx="750" cy="120" r="9"/>
+    <circle cx="780" cy="110" r="9"/>
+    <circle cx="805" cy="145" r="9"/>
+    <circle cx="735" cy="235" r="9"/>
+  </g>
+</svg>

@@ -6,6 +6,7 @@ import 'screens/splash/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/dashboard/attendance_dashboard_screen.dart';
 import 'core/config/app_config.dart';
+import 'theme/bjuka_brand.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,11 +22,8 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      title: 'BJUKA Internship',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      title: 'B. JUKA Internship',
+      theme: BjukaBrand.lightTheme(),
       home: _getHome(authState.status),
     );
   }

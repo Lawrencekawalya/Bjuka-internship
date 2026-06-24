@@ -4,6 +4,7 @@ import '../../core/network/wifi_info_service.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/providers.dart';
+import '../../theme/bjuka_brand.dart';
 import 'attendance_history_screen.dart';
 
 class AttendanceDashboardScreen extends ConsumerStatefulWidget {
@@ -50,7 +51,13 @@ class _AttendanceDashboardScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Attendance'),
+        title: const Row(
+          children: [
+            BjukaLogo(width: 32, showText: false),
+            SizedBox(width: 10),
+            Text('Attendance'),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
