@@ -23,8 +23,12 @@ class AuthState {
   factory AuthState.initial() => AuthState(status: AuthStatus.initial);
   factory AuthState.authenticating() =>
       AuthState(status: AuthStatus.authenticating);
-  factory AuthState.authenticated(User user) =>
-      AuthState(status: AuthStatus.authenticated, user: user);
+  factory AuthState.authenticated(User user, {String? errorMessage}) =>
+      AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        errorMessage: errorMessage,
+      );
   factory AuthState.unauthenticated() =>
       AuthState(status: AuthStatus.unauthenticated);
   factory AuthState.error(String message) =>
@@ -67,7 +71,28 @@ class AuthNotifier extends Notifier<AuthState> {
       await _storage.saveToken(response.token);
       state = AuthState.authenticated(response.user);
     } catch (e) {
-      state = AuthState.error(_readAuthError(e));
+      final user = state.user;
+      state = user == null
+          ? AuthState.error(_readAuthError(e))
+          : AuthState.authenticated(user, errorMessage: _readAuthError(e));
+    }
+  }
+
+  Future<void> changePassword({
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final user = await _repository.changePassword(
+        password: password,
+        passwordConfirmation: passwordConfirmation,
+      );
+      state = AuthState.authenticated(user);
+    } catch (e) {
+      final user = state.user;
+      state = user == null
+          ? AuthState.error(_readAuthError(e))
+          : AuthState.authenticated(user, errorMessage: _readAuthError(e));
     }
   }
 

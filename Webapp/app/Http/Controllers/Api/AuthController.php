@@ -63,6 +63,25 @@ class AuthController extends Controller
         ]);
     }
 
+    public function changePassword(Request $request)
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => $validated['password'],
+            'must_change_password' => false,
+        ]);
+
+        $request->user()->refresh();
+
+        return response()->json([
+            'message' => 'Password updated successfully.',
+            'user' => $this->userPayload($request->user()),
+        ]);
+    }
+
     /**
      * Get the authenticated User profile.
      */
@@ -84,6 +103,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'role' => $user->role->value,
             'avatar' => $user->avatar,
+            'must_change_password' => $user->must_change_password,
         ];
     }
 }

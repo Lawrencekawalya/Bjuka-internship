@@ -11,17 +11,31 @@ class AuthRepository {
     required String password,
     required String deviceName,
   }) async {
-    final response = await _dio.post('/login', data: {
-      'email': email,
-      'password': password,
-      'device_name': deviceName,
-    });
+    final response = await _dio.post(
+      '/login',
+      data: {'email': email, 'password': password, 'device_name': deviceName},
+    );
 
     return AuthResponse.fromJson(response.data);
   }
 
   Future<User> getMe() async {
     final response = await _dio.get('/me');
+    return User.fromJson(response.data['user']);
+  }
+
+  Future<User> changePassword({
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _dio.post(
+      '/password/change',
+      data: {
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+
     return User.fromJson(response.data['user']);
   }
 

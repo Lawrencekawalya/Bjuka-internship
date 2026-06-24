@@ -20,6 +20,7 @@ class AuthenticationTest extends TestCase
             'password' => bcrypt('password'),
             'role' => UserRole::INTERN,
             'profile_photo_path' => 'profile-photos/intern.jpg',
+            'must_change_password' => true,
         ]);
         Intern::factory()->create(['user_id' => $user->id]);
 
@@ -31,7 +32,8 @@ class AuthenticationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure(['token', 'user'])
-            ->assertJsonPath('user.avatar', url('/storage/profile-photos/intern.jpg'));
+            ->assertJsonPath('user.avatar', url('/storage/profile-photos/intern.jpg'))
+            ->assertJsonPath('user.must_change_password', true);
     }
 
     public function test_non_intern_cannot_login_to_api()
@@ -66,6 +68,27 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('user.email', $user->email)
             ->assertJsonPath('user.avatar', url('/storage/profile-photos/intern.jpg'));
+    }
+
+    public function test_intern_can_change_temporary_password(): void
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::INTERN,
+            'must_change_password' => true,
+        ]);
+        Intern::factory()->create(['user_id' => $user->id]);
+
+        $token = $user->createToken('test', ['mobile-access'])->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/password/change', [
+                'password' => 'NewPassword123!',
+                'password_confirmation' => 'NewPassword123!',
+            ])
+            ->assertOk()
+            ->assertJsonPath('user.must_change_password', false);
+
+        $this->assertFalse($user->fresh()->must_change_password);
     }
 
     public function test_inactive_intern_cannot_login()

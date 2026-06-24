@@ -21,10 +21,21 @@ export interface InternshipBatch {
     progress_percentage: number;
     coordinator_id: number | null;
     coordinator?: User;
+    interns?: Intern[];
     interns_count?: number;
     approved_networks?: ApprovedNetwork[];
     created_at: string;
     updated_at: string;
+}
+
+export interface Intern {
+    id: string;
+    phone: string | null;
+    institution: string | null;
+    course: string | null;
+    registration_number: string | null;
+    status: string;
+    user?: User;
 }
 
 export interface BatchStats {

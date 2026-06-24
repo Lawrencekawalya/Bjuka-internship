@@ -5,6 +5,7 @@ import 'providers/providers.dart';
 import 'providers/auth_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/change_password_screen.dart';
 import 'screens/dashboard/attendance_dashboard_screen.dart';
 import 'core/config/app_config.dart';
 import 'theme/bjuka_brand.dart';
@@ -35,15 +36,19 @@ class MyApp extends ConsumerWidget {
       title: 'B. JUKA Internship',
       debugShowCheckedModeBanner: false,
       theme: BjukaBrand.lightTheme(),
-      home: _getHome(authState.status),
+      home: _getHome(authState),
     );
   }
 
-  Widget _getHome(AuthStatus status) {
-    switch (status) {
+  Widget _getHome(AuthState authState) {
+    switch (authState.status) {
       case AuthStatus.initial:
         return const SplashScreen();
       case AuthStatus.authenticated:
+        if (authState.user?.mustChangePassword == true) {
+          return const ChangePasswordScreen();
+        }
+
         return const AttendanceDashboardScreen();
       case AuthStatus.unauthenticated:
       case AuthStatus.error:

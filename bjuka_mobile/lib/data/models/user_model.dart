@@ -4,6 +4,7 @@ class User {
   final String email;
   final String role;
   final String? avatarUrl;
+  final bool mustChangePassword;
 
   User({
     required this.id,
@@ -11,6 +12,7 @@ class User {
     required this.email,
     required this.role,
     this.avatarUrl,
+    this.mustChangePassword = false,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class User {
       email: json['email'],
       role: json['role'],
       avatarUrl: json['avatar'],
+      mustChangePassword: json['must_change_password'] == true,
     );
   }
 
@@ -30,6 +33,7 @@ class User {
       'email': email,
       'role': role,
       'avatar': avatarUrl,
+      'must_change_password': mustChangePassword,
     };
   }
 }
