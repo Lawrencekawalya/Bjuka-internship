@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\BatchStatus;
+use App\Models\ApprovedNetwork;
 use App\Models\InternshipBatch;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -54,7 +55,14 @@ class InternshipBatchController extends Controller
             'coordinator_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        InternshipBatch::create($validated);
+        $batch = InternshipBatch::create($validated);
+
+        ApprovedNetwork::create([
+            'batch_id' => $batch->id,
+            'name' => $batch->name.' Office WiFi',
+            'ssid' => 'BJUKA_WIFI',
+            'bssid' => 'any',
+        ]);
 
         return redirect()->route('batches.index')
             ->with('success', 'Batch created successfully.');

@@ -101,6 +101,33 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('attendance.wifi_ssid', 'BJUKA_WIFI');
     }
 
+    public function test_intern_can_check_in_when_batch_has_canonical_bjuka_wifi_network(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+
+        ApprovedNetwork::factory()->create([
+            'batch_id' => $user->intern->batch_id,
+            'ssid' => 'OLD_OFFICE_WIFI',
+            'bssid' => '00:11:22:33:44:55',
+        ]);
+
+        ApprovedNetwork::factory()->create([
+            'batch_id' => $user->intern->batch_id,
+            'ssid' => 'BJUKA_WIFI',
+            'bssid' => 'any',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'wifi_bssid' => 'AA:BB:CC:DD:EE:FF',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attendance.wifi_ssid', 'BJUKA_WIFI');
+    }
+
     public function test_intern_cannot_check_in_from_unapproved_wifi(): void
     {
         Carbon::setTestNow('2026-06-24 08:30:00');

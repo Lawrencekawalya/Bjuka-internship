@@ -55,6 +55,10 @@ class InternshipBatchTest extends TestCase
 
         $response->assertRedirect(route('batches.index'));
         $this->assertDatabaseHas('internship_batches', ['batch_code' => 'TEST-BATCH-001']);
+        $this->assertDatabaseHas('approved_networks', [
+            'ssid' => 'BJUKA_WIFI',
+            'bssid' => 'any',
+        ]);
     }
 
     public function test_can_view_edit_batch_page()
