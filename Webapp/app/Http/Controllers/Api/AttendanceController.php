@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Enums\AttendanceStatus;
 use App\Enums\InternStatus;
 use App\Http\Controllers\Controller;
-use App\Models\Attendance;
 use App\Models\ApprovedNetwork;
+use App\Models\Attendance;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
@@ -55,7 +55,10 @@ class AttendanceController extends Controller
             ], 409);
         }
 
-        if (! $this->isApprovedNetwork($intern->batch_id, $validated['wifi_ssid'], $validated['wifi_bssid'] ?? null)) {
+        $wifiSsid = $this->normalizeWifiValue($validated['wifi_ssid']);
+        $wifiBssid = $this->normalizeWifiValue($validated['wifi_bssid'] ?? null);
+
+        if (! $this->isApprovedNetwork($intern->batch_id, $wifiSsid)) {
             return response()->json([
                 'message' => 'You must be connected to an approved office Wi-Fi network to check in.',
             ], 403);
@@ -68,8 +71,8 @@ class AttendanceController extends Controller
             'check_in_device_time' => $this->deviceTime($validated),
             'check_in_server_time' => $serverTime,
             'status' => $this->statusForCheckIn($serverTime),
-            'wifi_ssid' => $validated['wifi_ssid'] ?? null,
-            'wifi_bssid' => $validated['wifi_bssid'] ?? null,
+            'wifi_ssid' => $wifiSsid,
+            'wifi_bssid' => $wifiBssid,
         ]);
 
         return response()->json([
@@ -108,7 +111,10 @@ class AttendanceController extends Controller
             ], 409);
         }
 
-        if (! $this->isApprovedNetwork($intern->batch_id, $validated['wifi_ssid'], $validated['wifi_bssid'] ?? null)) {
+        $wifiSsid = $this->normalizeWifiValue($validated['wifi_ssid']);
+        $wifiBssid = $this->normalizeWifiValue($validated['wifi_bssid'] ?? null);
+
+        if (! $this->isApprovedNetwork($intern->batch_id, $wifiSsid)) {
             return response()->json([
                 'message' => 'You must be connected to an approved office Wi-Fi network to check out.',
             ], 403);
@@ -151,17 +157,27 @@ class AttendanceController extends Controller
             : AttendanceStatus::PRESENT;
     }
 
-    private function isApprovedNetwork(string $batchId, string $ssid, ?string $bssid): bool
+    private function isApprovedNetwork(string $batchId, ?string $ssid): bool
     {
-        $query = ApprovedNetwork::query()
-            ->where('batch_id', $batchId)
-            ->where('ssid', $ssid);
-
-        if ($bssid) {
-            $query->whereRaw('lower(bssid) = ?', [strtolower($bssid)]);
+        if ($ssid === null) {
+            return false;
         }
 
-        return $query->exists();
+        return ApprovedNetwork::query()
+            ->where('batch_id', $batchId)
+            ->whereRaw('lower(trim(ssid)) = ?', [strtolower($ssid)])
+            ->exists();
+    }
+
+    private function normalizeWifiValue(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $cleaned = trim($value, " \t\n\r\0\x0B\"");
+
+        return $cleaned === '' ? null : $cleaned;
     }
 
     /**

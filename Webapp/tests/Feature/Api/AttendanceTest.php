@@ -5,8 +5,8 @@ namespace Tests\Feature\Api;
 use App\Enums\AttendanceStatus;
 use App\Enums\InternStatus;
 use App\Enums\UserRole;
-use App\Models\Attendance;
 use App\Models\ApprovedNetwork;
+use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -64,6 +64,38 @@ class AttendanceTest extends TestCase
             ->postJson('/api/attendance/check-in', [
                 'device_time' => '2026-06-24T08:29:30+03:00',
                 'wifi_ssid' => 'BJUKA_WIFI',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attendance.wifi_ssid', 'BJUKA_WIFI');
+    }
+
+    public function test_intern_can_check_in_from_approved_ssid_with_different_access_point_bssid(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'wifi_bssid' => '66:77:88:99:AA:BB',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attendance.wifi_bssid', '66:77:88:99:AA:BB');
+    }
+
+    public function test_intern_can_check_in_when_device_wraps_approved_ssid_in_quotes(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => '"BJUKA_WIFI"',
+                'wifi_bssid' => '00:11:22:33:44:55',
             ])
             ->assertCreated()
             ->assertJsonPath('attendance.wifi_ssid', 'BJUKA_WIFI');

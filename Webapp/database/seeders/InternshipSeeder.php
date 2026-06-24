@@ -88,7 +88,7 @@ class InternshipSeeder extends Seeder
             ApprovedNetwork::factory()->create([
                 'batch_id' => $batch->id,
                 'name' => $batch->name.' Office WiFi',
-                'ssid' => 'BJUKA_WIFI_'.strtoupper(substr($batch->id, 0, 4)),
+                'ssid' => 'BJUKA_WIFI',
             ]);
 
             $seededInterns = collect();
