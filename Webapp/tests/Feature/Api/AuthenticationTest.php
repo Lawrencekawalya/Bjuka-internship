@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\UserRole;
+use App\Models\Intern;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,6 +19,7 @@ class AuthenticationTest extends TestCase
             'password' => bcrypt('password'),
             'role' => UserRole::INTERN,
         ]);
+        Intern::factory()->create(['user_id' => $user->id]);
 
         $response = $this->postJson('/api/login', [
             'email' => 'intern@bjuka.io',
