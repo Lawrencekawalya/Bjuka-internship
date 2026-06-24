@@ -11,6 +11,11 @@ class AttendanceRepository {
     return AttendanceStateResponse.fromJson(response.data);
   }
 
+  Future<AttendanceHistoryResponse> getHistory() async {
+    final response = await _dio.get('/attendance/history');
+    return AttendanceHistoryResponse.fromJson(response.data);
+  }
+
   Future<Attendance> checkIn({
     required String wifiSsid,
     String? wifiBssid,

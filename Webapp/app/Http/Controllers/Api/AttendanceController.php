@@ -35,6 +35,31 @@ class AttendanceController extends Controller
         ]);
     }
 
+    public function history(Request $request): JsonResponse
+    {
+        $intern = $request->user()->intern;
+
+        if (! $intern || $intern->status !== InternStatus::ACTIVE) {
+            return response()->json([
+                'message' => 'Active intern profile required.',
+            ], 403);
+        }
+
+        $attendances = Attendance::query()
+            ->with('learningLog')
+            ->where('intern_id', $intern->id)
+            ->latest('date')
+            ->latest('check_in_server_time')
+            ->limit(60)
+            ->get()
+            ->map(fn (Attendance $attendance) => $this->attendancePayload($attendance))
+            ->values();
+
+        return response()->json([
+            'attendances' => $attendances,
+        ]);
+    }
+
     public function checkIn(Request $request): JsonResponse
     {
         $validated = $request->validate([

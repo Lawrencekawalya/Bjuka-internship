@@ -73,3 +73,22 @@ class AttendanceStateResponse {
     );
   }
 }
+
+class AttendanceHistoryResponse {
+  final List<Attendance> attendances;
+
+  AttendanceHistoryResponse({required this.attendances});
+
+  factory AttendanceHistoryResponse.fromJson(Map<String, dynamic> json) {
+    final attendanceJson = json['attendances'];
+
+    return AttendanceHistoryResponse(
+      attendances: attendanceJson is List
+          ? attendanceJson
+                .whereType<Map<String, dynamic>>()
+                .map(Attendance.fromJson)
+                .toList()
+          : [],
+    );
+  }
+}

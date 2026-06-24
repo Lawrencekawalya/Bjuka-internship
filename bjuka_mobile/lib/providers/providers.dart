@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/network/dio_client.dart';
 import '../core/network/wifi_info_service.dart';
 import '../core/storage/secure_storage_service.dart';
+import '../data/models/attendance_model.dart';
 import '../data/repositories/attendance_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import 'attendance_provider.dart';
@@ -31,6 +32,11 @@ final attendanceRepositoryProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
   return AttendanceRepository(dio);
 });
+
+final attendanceHistoryProvider =
+    FutureProvider.autoDispose<AttendanceHistoryResponse>((ref) {
+      return ref.watch(attendanceRepositoryProvider).getHistory();
+    });
 
 final authStateProvider = NotifierProvider<AuthNotifier, AuthState>(() {
   return AuthNotifier();

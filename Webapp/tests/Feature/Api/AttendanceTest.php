@@ -307,6 +307,39 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('can_check_out', false);
     }
 
+    public function test_intern_can_view_only_their_attendance_history(): void
+    {
+        $user = $this->activeInternUser();
+        $otherUser = $this->activeInternUser();
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-23',
+            'check_in_server_time' => '2026-06-23 08:30:00',
+            'check_out_server_time' => '2026-06-23 17:00:00',
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => '2026-06-24 08:40:00',
+            'check_out_server_time' => '2026-06-24 17:10:00',
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $otherUser->intern->id,
+            'date' => '2026-06-25',
+            'check_in_server_time' => '2026-06-25 08:30:00',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/attendance/history')
+            ->assertOk()
+            ->assertJsonCount(2, 'attendances')
+            ->assertJsonPath('attendances.0.date', '2026-06-24')
+            ->assertJsonPath('attendances.1.date', '2026-06-23');
+    }
+
     private function activeInternUser(): User
     {
         $user = User::factory()->create(['role' => UserRole::INTERN]);

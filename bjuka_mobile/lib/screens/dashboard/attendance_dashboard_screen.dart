@@ -4,6 +4,7 @@ import '../../core/network/wifi_info_service.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/providers.dart';
+import 'attendance_history_screen.dart';
 
 class AttendanceDashboardScreen extends ConsumerStatefulWidget {
   const AttendanceDashboardScreen({super.key});
@@ -58,10 +59,39 @@ class _AttendanceDashboardScreenState
                 ? null
                 : _refreshAttendanceAndWifi,
           ),
-          IconButton(
-            tooltip: 'Logout',
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authStateProvider.notifier).logout(),
+          PopupMenuButton<_MoreMenuAction>(
+            tooltip: 'More',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (action) {
+              switch (action) {
+                case _MoreMenuAction.history:
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AttendanceHistoryScreen(),
+                    ),
+                  );
+                case _MoreMenuAction.logout:
+                  ref.read(authStateProvider.notifier).logout();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: _MoreMenuAction.history,
+                child: ListTile(
+                  leading: Icon(Icons.history),
+                  title: Text('History'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: _MoreMenuAction.logout,
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('Logout'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -96,6 +126,8 @@ class _AttendanceDashboardScreenState
     await ref.read(attendanceStateProvider.notifier).loadToday();
   }
 }
+
+enum _MoreMenuAction { history, logout }
 
 class _WelcomeHeader extends StatelessWidget {
   final User? user;
