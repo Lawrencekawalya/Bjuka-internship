@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/network/wifi_info_service.dart';
 import '../../data/models/attendance_model.dart';
+import '../../data/models/user_model.dart';
 import '../../providers/providers.dart';
 
 class AttendanceDashboardScreen extends ConsumerStatefulWidget {
@@ -25,6 +27,7 @@ class _AttendanceDashboardScreenState
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final attendanceState = ref.watch(attendanceStateProvider);
+    final wifiState = ref.watch(currentWifiProvider);
     final theme = Theme.of(context);
 
     ref.listen(attendanceStateProvider, (previous, next) {
@@ -53,7 +56,7 @@ class _AttendanceDashboardScreenState
             icon: const Icon(Icons.refresh),
             onPressed: attendanceState.isSubmitting
                 ? null
-                : () => ref.read(attendanceStateProvider.notifier).loadToday(),
+                : _refreshAttendanceAndWifi,
           ),
           IconButton(
             tooltip: 'Logout',
@@ -66,12 +69,11 @@ class _AttendanceDashboardScreenState
         child: attendanceState.isLoading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(attendanceStateProvider.notifier).loadToday(),
+                onRefresh: _refreshAttendanceAndWifi,
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    _WelcomeHeader(name: authState.user?.name ?? 'Intern'),
+                    _WelcomeHeader(user: authState.user, wifiState: wifiState),
                     const SizedBox(height: 16),
                     _StatusCard(attendance: attendanceState.attendance),
                     const SizedBox(height: 16),
@@ -88,12 +90,18 @@ class _AttendanceDashboardScreenState
       ),
     );
   }
+
+  Future<void> _refreshAttendanceAndWifi() async {
+    ref.invalidate(currentWifiProvider);
+    await ref.read(attendanceStateProvider.notifier).loadToday();
+  }
 }
 
 class _WelcomeHeader extends StatelessWidget {
-  final String name;
+  final User? user;
+  final AsyncValue<WifiInfo> wifiState;
 
-  const _WelcomeHeader({required this.name});
+  const _WelcomeHeader({required this.user, required this.wifiState});
 
   @override
   Widget build(BuildContext context) {
@@ -108,20 +116,37 @@ class _WelcomeHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Welcome, $name',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              _ProfilePhoto(user: user),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Welcome, ${user?.name ?? 'Intern'}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _formatToday(),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            _formatToday(),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-            ),
-          ),
+          const SizedBox(height: 16),
+          _WifiStatusPill(wifiState: wifiState),
         ],
       ),
     );
@@ -145,6 +170,136 @@ class _WelcomeHeader extends StatelessWidget {
     ];
 
     return '${months[now.month - 1]} ${now.day}, ${now.year}';
+  }
+}
+
+class _ProfilePhoto extends StatelessWidget {
+  final User? user;
+
+  const _ProfilePhoto({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final avatarUrl = user?.avatarUrl;
+
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.65),
+      foregroundImage: avatarUrl == null || avatarUrl.isEmpty
+          ? null
+          : NetworkImage(avatarUrl),
+      child: Text(
+        _initials(user?.name ?? 'Intern'),
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: theme.colorScheme.onPrimaryContainer,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  String _initials(String value) {
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .take(2)
+        .toList();
+
+    if (parts.isEmpty) {
+      return 'I';
+    }
+
+    return parts.map((part) => part[0].toUpperCase()).join();
+  }
+}
+
+class _WifiStatusPill extends StatelessWidget {
+  final AsyncValue<WifiInfo> wifiState;
+
+  const _WifiStatusPill({required this.wifiState});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foreground = theme.colorScheme.onPrimaryContainer;
+
+    final Widget leading;
+    final String title;
+    final String subtitle;
+    final Color indicatorColor;
+
+    switch (wifiState) {
+      case AsyncData(:final value):
+        leading = const Icon(Icons.wifi, size: 20);
+        title = 'Wi-Fi connected';
+        subtitle = value.ssid;
+        indicatorColor = Colors.green;
+      case AsyncError():
+        leading = const Icon(Icons.wifi_off, size: 20);
+        title = 'Wi-Fi unavailable';
+        subtitle = 'Not connected or permission needed';
+        indicatorColor = theme.colorScheme.error;
+      default:
+        leading = SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2, color: foreground),
+        );
+        title = 'Checking Wi-Fi';
+        subtitle = 'Detecting connected network';
+        indicatorColor = theme.colorScheme.outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          IconTheme(
+            data: IconThemeData(color: foreground),
+            child: leading,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: foreground.withValues(alpha: 0.82),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: indicatorColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

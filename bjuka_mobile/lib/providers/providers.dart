@@ -11,6 +11,12 @@ final secureStorageProvider = Provider((ref) => SecureStorageService());
 
 final wifiInfoProvider = Provider((ref) => WifiInfoService());
 
+final currentWifiProvider = FutureProvider.autoDispose<WifiInfo>((ref) {
+  return ref
+      .watch(wifiInfoProvider)
+      .currentWifi(action: AttendanceAction.checkIn);
+});
+
 final dioProvider = Provider((ref) {
   final storage = ref.watch(secureStorageProvider);
   return DioClient(storage).dio;

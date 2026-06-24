@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\InternStatus;
 use App\Enums\UserRole;
 use App\Models\Intern;
 use App\Models\User;
@@ -18,6 +19,7 @@ class AuthenticationTest extends TestCase
             'email' => 'intern@bjuka.io',
             'password' => bcrypt('password'),
             'role' => UserRole::INTERN,
+            'profile_photo_path' => 'profile-photos/intern.jpg',
         ]);
         Intern::factory()->create(['user_id' => $user->id]);
 
@@ -28,7 +30,8 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['token', 'user']);
+            ->assertJsonStructure(['token', 'user'])
+            ->assertJsonPath('user.avatar', url('/storage/profile-photos/intern.jpg'));
     }
 
     public function test_non_intern_cannot_login_to_api()
@@ -51,22 +54,26 @@ class AuthenticationTest extends TestCase
 
     public function test_user_can_get_authenticated_user_profile()
     {
-        $user = User::factory()->create(['role' => UserRole::INTERN]);
+        $user = User::factory()->create([
+            'role' => UserRole::INTERN,
+            'profile_photo_path' => 'profile-photos/intern.jpg',
+        ]);
         $token = $user->createToken('test', ['mobile-access'])->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/me');
 
         $response->assertStatus(200)
-            ->assertJsonPath('user.email', $user->email);
+            ->assertJsonPath('user.email', $user->email)
+            ->assertJsonPath('user.avatar', url('/storage/profile-photos/intern.jpg'));
     }
 
     public function test_inactive_intern_cannot_login()
     {
         $user = User::factory()->create(['role' => UserRole::INTERN]);
-        $intern = \App\Models\Intern::factory()->create([
+        $intern = Intern::factory()->create([
             'user_id' => $user->id,
-            'status' => \App\Enums\InternStatus::INACTIVE,
+            'status' => InternStatus::INACTIVE,
         ]);
 
         $response = $this->postJson('/api/login', [
@@ -80,7 +87,6 @@ class AuthenticationTest extends TestCase
     }
 
     public function test_user_can_logout()
-
     {
         $user = User::factory()->create(['role' => UserRole::INTERN]);
         $token = $user->createToken('test')->plainTextToken;

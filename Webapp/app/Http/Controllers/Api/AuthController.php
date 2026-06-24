@@ -47,12 +47,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role->value,
-            ],
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -74,12 +69,21 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json([
-            'user' => [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-                'role' => $request->user()->role->value,
-            ],
+            'user' => $this->userPayload($request->user()),
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function userPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role->value,
+            'avatar' => $user->avatar,
+        ];
     }
 }
