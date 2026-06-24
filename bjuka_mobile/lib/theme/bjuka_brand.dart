@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class BjukaBrand {
   static const Color navy = Color(0xFF004D86);
@@ -25,6 +26,13 @@ class BjukaBrand {
         foregroundColor: ink,
         centerTitle: false,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.white,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+          systemNavigationBarColor: Colors.white,
+          systemNavigationBarIconBrightness: Brightness.dark,
+        ),
       ),
       cardTheme: CardThemeData(
         color: Colors.white,

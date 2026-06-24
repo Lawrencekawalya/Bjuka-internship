@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'providers/providers.dart';
 import 'providers/auth_provider.dart';
 import 'screens/splash/splash_screen.dart';
@@ -10,6 +11,15 @@ import 'theme/bjuka_brand.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.white,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
   AppConfig.logConfig();
   runApp(const ProviderScope(child: MyApp()));
 }
@@ -23,6 +33,7 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'B. JUKA Internship',
+      debugShowCheckedModeBanner: false,
       theme: BjukaBrand.lightTheme(),
       home: _getHome(authState.status),
     );
