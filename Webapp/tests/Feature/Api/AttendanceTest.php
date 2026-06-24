@@ -112,6 +112,7 @@ class AttendanceTest extends TestCase
                 'device_time' => '2026-06-24T08:29:30+03:00',
                 'wifi_ssid' => 'HOME_WIFI',
                 'wifi_bssid' => '66:77:88:99:AA:BB',
+                'activities' => 'Reviewed tickets and completed the assigned Laravel API fixes.',
             ])
             ->assertForbidden()
             ->assertJsonPath('message', 'You must be connected to an approved office Wi-Fi network to check in.');
@@ -158,14 +159,21 @@ class AttendanceTest extends TestCase
                 'device_time' => '2026-06-24T16:59:00+03:00',
                 'wifi_ssid' => 'BJUKA_WIFI',
                 'wifi_bssid' => '00:11:22:33:44:55',
+                'activities' => 'Reviewed tickets and completed the assigned Laravel API fixes.',
             ]);
 
         $response->assertOk()
-            ->assertJsonPath('attendance.work_duration_minutes', 510);
+            ->assertJsonPath('attendance.work_duration_minutes', 510)
+            ->assertJsonPath('attendance.daily_activities', 'Reviewed tickets and completed the assigned Laravel API fixes.');
 
         $this->assertDatabaseHas('attendances', [
             'id' => $attendance->id,
             'work_duration_minutes' => 510,
+        ]);
+
+        $this->assertDatabaseHas('daily_learning_logs', [
+            'attendance_id' => $attendance->id,
+            'tasks_completed' => 'Reviewed tickets and completed the assigned Laravel API fixes.',
         ]);
     }
 
@@ -190,6 +198,53 @@ class AttendanceTest extends TestCase
             ->assertJsonValidationErrors(['wifi_ssid']);
     }
 
+    public function test_intern_cannot_check_out_without_activities(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => now(),
+        ]);
+
+        Carbon::setTestNow('2026-06-24 17:00:00');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-out', [
+                'device_time' => '2026-06-24T16:59:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['activities']);
+    }
+
+    public function test_intern_cannot_check_out_with_more_than_seventy_activity_words(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => now(),
+        ]);
+
+        Carbon::setTestNow('2026-06-24 17:00:00');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-out', [
+                'device_time' => '2026-06-24T16:59:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'activities' => implode(' ', array_fill(0, 71, 'task')),
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['activities']);
+    }
+
     public function test_intern_can_check_out_when_device_does_not_expose_bssid(): void
     {
         Carbon::setTestNow('2026-06-24 08:30:00');
@@ -208,6 +263,7 @@ class AttendanceTest extends TestCase
             ->postJson('/api/attendance/check-out', [
                 'device_time' => '2026-06-24T16:59:00+03:00',
                 'wifi_ssid' => 'BJUKA_WIFI',
+                'activities' => 'Reviewed tickets and completed the assigned Laravel API fixes.',
             ])
             ->assertOk()
             ->assertJsonPath('attendance.work_duration_minutes', 510);
@@ -232,6 +288,7 @@ class AttendanceTest extends TestCase
                 'device_time' => '2026-06-24T16:59:00+03:00',
                 'wifi_ssid' => 'HOME_WIFI',
                 'wifi_bssid' => '66:77:88:99:AA:BB',
+                'activities' => 'Reviewed tickets and completed the assigned Laravel API fixes.',
             ])
             ->assertForbidden()
             ->assertJsonPath('message', 'You must be connected to an approved office Wi-Fi network to check out.');

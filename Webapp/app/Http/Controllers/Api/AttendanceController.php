@@ -7,10 +7,12 @@ use App\Enums\InternStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
+use App\Models\DailyLearningLog;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceController extends Controller
 {
@@ -87,7 +89,10 @@ class AttendanceController extends Controller
             'device_time' => ['nullable', 'date'],
             'wifi_ssid' => ['required', 'string', 'max:255'],
             'wifi_bssid' => ['nullable', 'string', 'max:255'],
+            'activities' => ['required', 'string', 'max:1000'],
         ]);
+
+        $activities = $this->validatedActivities($validated['activities']);
 
         $intern = $request->user()->intern;
 
@@ -127,15 +132,24 @@ class AttendanceController extends Controller
             'work_duration_minutes' => $attendance->check_in_server_time->diffInMinutes($serverTime),
         ]);
 
+        DailyLearningLog::updateOrCreate(
+            ['attendance_id' => $attendance->id],
+            [
+                'studied_content' => $activities,
+                'tasks_completed' => $activities,
+            ],
+        );
+
         return response()->json([
             'message' => 'Checked out successfully.',
-            'attendance' => $this->attendancePayload($attendance->fresh()),
+            'attendance' => $this->attendancePayload($attendance->fresh('learningLog')),
         ]);
     }
 
     private function todayAttendance(string $internId): ?Attendance
     {
         return Attendance::where('intern_id', $internId)
+            ->with('learningLog')
             ->whereDate('date', today())
             ->first();
     }
@@ -180,6 +194,25 @@ class AttendanceController extends Controller
         return $cleaned === '' ? null : $cleaned;
     }
 
+    private function validatedActivities(string $activities): string
+    {
+        $cleaned = trim(preg_replace('/\s+/', ' ', $activities) ?? '');
+
+        if ($cleaned === '') {
+            throw ValidationException::withMessages([
+                'activities' => 'Tell us what you worked on today before checking out.',
+            ]);
+        }
+
+        if (str_word_count($cleaned) > 70) {
+            throw ValidationException::withMessages([
+                'activities' => 'Activities must not be more than 70 words.',
+            ]);
+        }
+
+        return $cleaned;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -196,6 +229,7 @@ class AttendanceController extends Controller
             'status' => $attendance->status->value,
             'wifi_ssid' => $attendance->wifi_ssid,
             'wifi_bssid' => $attendance->wifi_bssid,
+            'daily_activities' => $attendance->learningLog?->tasks_completed,
         ];
     }
 }

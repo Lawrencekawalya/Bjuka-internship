@@ -112,7 +112,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     }
   }
 
-  Future<void> checkOut() async {
+  Future<void> checkOut({required String activities}) async {
     state = state.copyWith(isSubmitting: true, clearMessages: true);
 
     try {
@@ -122,6 +122,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
       final attendance = await _repository.checkOut(
         wifiSsid: wifi.ssid,
         wifiBssid: wifi.bssid,
+        activities: activities,
       );
       state = state.copyWith(
         isSubmitting: false,

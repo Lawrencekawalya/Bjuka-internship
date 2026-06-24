@@ -29,6 +29,7 @@ class AttendanceRepository {
 
   Future<Attendance> checkOut({
     required String wifiSsid,
+    required String activities,
     String? wifiBssid,
   }) async {
     final response = await _dio.post(
@@ -37,6 +38,7 @@ class AttendanceRepository {
         'device_time': DateTime.now().toUtc().toIso8601String(),
         'wifi_ssid': wifiSsid,
         'wifi_bssid': wifiBssid,
+        'activities': activities,
       },
     );
 

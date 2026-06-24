@@ -9,6 +9,7 @@ class Attendance {
   final String status;
   final String? wifiSsid;
   final String? wifiBssid;
+  final String? dailyActivities;
 
   Attendance({
     required this.id,
@@ -21,6 +22,7 @@ class Attendance {
     this.workDurationMinutes,
     this.wifiSsid,
     this.wifiBssid,
+    this.dailyActivities,
   });
 
   factory Attendance.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class Attendance {
       status: json['status'],
       wifiSsid: json['wifi_ssid'],
       wifiBssid: json['wifi_bssid'],
+      dailyActivities: json['daily_activities'],
     );
   }
 
