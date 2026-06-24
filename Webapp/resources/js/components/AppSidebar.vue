@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid, Layers } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import {
+    BookOpen,
+    CalendarCheck,
+    FolderGit2,
+    LayoutGrid,
+    Layers,
+} from '@lucide/vue';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -16,20 +23,43 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { index as batchesIndex } from '@/routes/batches';
-import type { NavItem } from '@/types';
+import type { Auth, NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Batches',
-        href: batchesIndex(),
-        icon: Layers,
-    },
-];
+const page = usePage<{ auth: Auth }>();
+const userRole = computed(() => page.props.auth.user.role);
+const canViewAttendance = computed(() =>
+    ['admin', 'hr', 'manager', 'center_director', 'supervisor'].includes(
+        String(userRole.value),
+    ),
+);
+
+const mainNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: LayoutGrid,
+        },
+    ];
+
+    if (userRole.value === 'admin') {
+        items.push({
+            title: 'Batches',
+            href: batchesIndex(),
+            icon: Layers,
+        });
+    }
+
+    if (canViewAttendance.value) {
+        items.push({
+            title: 'Attendance',
+            href: '/attendances',
+            icon: CalendarCheck,
+        });
+    }
+
+    return items;
+});
 
 const footerNavItems: NavItem[] = [
     {

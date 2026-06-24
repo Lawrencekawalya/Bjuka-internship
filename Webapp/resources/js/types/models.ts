@@ -34,3 +34,26 @@ export interface BatchStats {
     total_supervisors: number;
     progress: number;
 }
+
+export interface AttendanceRecord {
+    id: string;
+    date: string;
+    check_in_server_time: string | null;
+    check_out_server_time: string | null;
+    work_duration_minutes: number | null;
+    status: string;
+    wifi_ssid: string | null;
+    wifi_bssid: string | null;
+    intern: {
+        id: string | null;
+        name: string | null;
+        email: string | null;
+        institution: string | null;
+        registration_number: string | null;
+        batch: {
+            id: string;
+            batch_code: string;
+            name: string;
+        } | null;
+    };
+}
