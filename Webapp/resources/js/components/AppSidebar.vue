@@ -42,7 +42,7 @@ const mainNavItems = computed<NavItem[]>(() => {
         },
     ];
 
-    if (userRole.value === 'admin') {
+    if (['admin', 'hr'].includes(String(userRole.value))) {
         items.push({
             title: 'Batches',
             href: batchesIndex(),

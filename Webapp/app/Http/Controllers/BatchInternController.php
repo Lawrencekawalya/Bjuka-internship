@@ -62,4 +62,29 @@ class BatchInternController extends Controller
 
         return redirect()->route('batches.show', $batch);
     }
+
+    public function resetPassword(Request $request, InternshipBatch $batch, Intern $intern): RedirectResponse
+    {
+        abort_unless($intern->batch_id === $batch->id, 404);
+
+        $validated = $request->validate([
+            'temporary_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $intern->loadMissing('user');
+
+        $intern->user->update([
+            'password' => $validated['temporary_password'],
+            'must_change_password' => true,
+        ]);
+
+        $intern->user->tokens()->delete();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Intern password reset successfully. They must change the temporary password on next login.',
+        ]);
+
+        return redirect()->route('batches.show', $batch);
+    }
 }

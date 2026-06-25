@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { Layers, MoreHorizontal, Plus, Search } from '@lucide/vue';
+import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import {
     show as showBatch,
     edit as editBatch,
 } from '@/routes/batches';
-import type { InternshipBatch, BreadcrumbItem } from '@/types';
+import type { InternshipBatch, BreadcrumbItem, Auth } from '@/types';
 
 type PaginationLink = {
     url: string | null;
@@ -54,6 +55,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const page = usePage<{ auth: Auth }>();
+const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -168,7 +171,7 @@ const archiveBatch = (batch: InternshipBatch) => {
                         Manage your internship cycles and slots.
                     </p>
                 </div>
-                <Button as-child>
+                <Button v-if="isAdmin" as-child>
                     <Link :href="createBatch()">
                         <Plus class="mr-2 h-4 w-4" />
                         Create Batch
@@ -350,19 +353,26 @@ const archiveBatch = (batch: InternshipBatch) => {
                                                 View Dashboard
                                             </Link>
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem as-child>
+                                        <DropdownMenuItem
+                                            v-if="isAdmin"
+                                            as-child
+                                        >
                                             <Link :href="editBatch(batch.id)">
                                                 Edit Settings
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            v-if="batch.status === 'active'"
+                                            v-if="
+                                                isAdmin &&
+                                                batch.status === 'active'
+                                            "
                                             @select.prevent="closeBatch(batch)"
                                         >
                                             Close Batch
                                         </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
+                                        <DropdownMenuSeparator v-if="isAdmin" />
                                         <DropdownMenuItem
+                                            v-if="isAdmin"
                                             class="font-medium text-destructive"
                                             @select.prevent="
                                                 archiveBatch(batch)

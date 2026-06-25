@@ -17,7 +17,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
-        Route::resource('batches', InternshipBatchController::class);
+        Route::resource('batches', InternshipBatchController::class)->except(['index', 'show']);
+    });
+
+    Route::middleware('role:admin,hr')->group(function () {
+        Route::get('batches', [InternshipBatchController::class, 'index'])->name('batches.index');
+        Route::get('batches/{batch}', [InternshipBatchController::class, 'show'])->name('batches.show');
+        Route::patch('batches/{batch}/interns/{intern}/password', [BatchInternController::class, 'resetPassword'])
+            ->name('batches.interns.password.reset');
     });
 });
 

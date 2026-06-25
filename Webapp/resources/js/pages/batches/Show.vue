@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import {
     ArrowLeft,
     Calendar,
@@ -14,8 +14,9 @@ import {
     FileText,
     Settings,
     UserPlus,
+    KeyRound,
 } from '@lucide/vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,7 +53,13 @@ import {
     index as batchesIndex,
     show as showBatch,
 } from '@/routes/batches';
-import type { InternshipBatch, BatchStats, BreadcrumbItem } from '@/types';
+import type {
+    InternshipBatch,
+    BatchStats,
+    BreadcrumbItem,
+    Intern,
+    Auth,
+} from '@/types';
 
 defineOptions({
     layout: [],
@@ -64,9 +71,16 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const page = usePage<{ auth: Auth }>();
 
 const activeTab = ref('overview');
 const isAddInternOpen = ref(false);
+const isResetPasswordOpen = ref(false);
+const selectedIntern = ref<Intern | null>(null);
+const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
+const canResetInternPassword = computed(() =>
+    ['admin', 'hr'].includes(String(page.props.auth.user.role)),
+);
 
 const internForm = useForm({
     name: '',
@@ -76,6 +90,11 @@ const internForm = useForm({
     course: '',
     registration_number: '',
     profile_photo: null as File | null,
+    temporary_password: '',
+    temporary_password_confirmation: '',
+});
+
+const resetPasswordForm = useForm({
     temporary_password: '',
     temporary_password_confirmation: '',
 });
@@ -112,6 +131,8 @@ const getStatusVariant = (status: string) => {
 
 const closeBatchUrl = (batchId: string) => `/batches/${batchId}/close`;
 const batchInternsUrl = (batchId: string) => `/batches/${batchId}/interns`;
+const resetInternPasswordUrl = (batchId: string, internId: string) =>
+    `/batches/${batchId}/interns/${internId}/password`;
 
 const closeBatch = () => {
     if (
@@ -149,12 +170,52 @@ const addIntern = () => {
     });
 };
 
+const openResetPasswordDialog = (intern: Intern) => {
+    selectedIntern.value = intern;
+    resetPasswordForm.reset();
+    resetPasswordForm.clearErrors();
+    isResetPasswordOpen.value = true;
+};
+
+const resetInternPassword = () => {
+    if (!selectedIntern.value) {
+        return;
+    }
+
+    resetPasswordForm.patch(
+        resetInternPasswordUrl(props.batch.id, selectedIntern.value.id),
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                isResetPasswordOpen.value = false;
+                selectedIntern.value = null;
+                resetPasswordForm.reset();
+                resetPasswordForm.clearErrors();
+            },
+        },
+    );
+};
+
 const handleProfilePhoto = (event: Event) => {
     const input = event.target as HTMLInputElement;
     internForm.profile_photo = input.files?.[0] ?? null;
 };
 
 const generateTemporaryPassword = () => {
+    const password = makeTemporaryPassword();
+
+    internForm.temporary_password = password;
+    internForm.temporary_password_confirmation = password;
+};
+
+const generateResetPassword = () => {
+    const password = makeTemporaryPassword();
+
+    resetPasswordForm.temporary_password = password;
+    resetPasswordForm.temporary_password_confirmation = password;
+};
+
+const makeTemporaryPassword = () => {
     const chars =
         'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
     let password = '';
@@ -163,8 +224,7 @@ const generateTemporaryPassword = () => {
         password += chars[Math.floor(Math.random() * chars.length)];
     }
 
-    internForm.temporary_password = password;
-    internForm.temporary_password_confirmation = password;
+    return password;
 };
 </script>
 
@@ -203,16 +263,16 @@ const generateTemporaryPassword = () => {
                 </div>
                 <div class="flex items-center gap-2">
                     <Button
-                        v-if="batch.status === 'active'"
+                        v-if="isAdmin && batch.status === 'active'"
                         variant="outline"
                         @click="closeBatch"
                     >
                         Close Batch
                     </Button>
-                    <Button variant="outline" as-child>
+                    <Button v-if="isAdmin" variant="outline" as-child>
                         <Link :href="editBatch(batch.id)">Edit Batch</Link>
                     </Button>
-                    <DropdownMenu>
+                    <DropdownMenu v-if="isAdmin">
                         <DropdownMenuTrigger as-child>
                             <Button variant="outline" size="icon">
                                 <MoreVertical class="h-4 w-4" />
@@ -446,7 +506,10 @@ const generateTemporaryPassword = () => {
                                         batch.</CardDescription
                                     >
                                 </div>
-                                <Dialog v-model:open="isAddInternOpen">
+                                <Dialog
+                                    v-if="isAdmin"
+                                    v-model:open="isAddInternOpen"
+                                >
                                     <DialogTrigger as-child>
                                         <Button size="sm">
                                             <UserPlus class="mr-2 h-4 w-4" />
@@ -797,6 +860,15 @@ const generateTemporaryPassword = () => {
                                     >
                                         {{ intern.status }}
                                     </Badge>
+                                    <Button
+                                        v-if="canResetInternPassword"
+                                        variant="outline"
+                                        size="sm"
+                                        @click="openResetPasswordDialog(intern)"
+                                    >
+                                        <KeyRound class="mr-2 h-4 w-4" />
+                                        Reset password
+                                    </Button>
                                 </div>
                             </div>
                             <div
@@ -808,6 +880,102 @@ const generateTemporaryPassword = () => {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Dialog v-model:open="isResetPasswordOpen">
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Reset Intern Password</DialogTitle>
+                                <DialogDescription>
+                                    Issue a temporary password for
+                                    {{ selectedIntern?.user?.name }}. The intern
+                                    must change it after logging in.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form
+                                class="grid gap-4"
+                                @submit.prevent="resetInternPassword"
+                            >
+                                <div class="grid gap-2">
+                                    <div
+                                        class="flex items-center justify-between gap-2"
+                                    >
+                                        <Label for="reset_temporary_password">
+                                            Temporary password
+                                        </Label>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            @click="generateResetPassword"
+                                        >
+                                            Generate
+                                        </Button>
+                                    </div>
+                                    <Input
+                                        id="reset_temporary_password"
+                                        v-model="
+                                            resetPasswordForm.temporary_password
+                                        "
+                                        type="text"
+                                        placeholder="Minimum 8 characters"
+                                        :class="{
+                                            'border-destructive':
+                                                resetPasswordForm.errors
+                                                    .temporary_password,
+                                        }"
+                                    />
+                                    <p
+                                        v-if="
+                                            resetPasswordForm.errors
+                                                .temporary_password
+                                        "
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{
+                                            resetPasswordForm.errors
+                                                .temporary_password
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label
+                                        for="reset_temporary_password_confirmation"
+                                    >
+                                        Confirm temporary password
+                                    </Label>
+                                    <Input
+                                        id="reset_temporary_password_confirmation"
+                                        v-model="
+                                            resetPasswordForm.temporary_password_confirmation
+                                        "
+                                        type="text"
+                                        placeholder="Repeat password"
+                                    />
+                                </div>
+
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="isResetPasswordOpen = false"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        :disabled="resetPasswordForm.processing"
+                                    >
+                                        {{
+                                            resetPasswordForm.processing
+                                                ? 'Resetting...'
+                                                : 'Reset Password'
+                                        }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 <div v-else-if="activeTab === 'attendance'">

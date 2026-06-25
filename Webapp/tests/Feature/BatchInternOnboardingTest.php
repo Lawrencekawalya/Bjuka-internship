@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\InternStatus;
 use App\Enums\UserRole;
+use App\Models\Intern;
 use App\Models\InternshipBatch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -65,5 +67,93 @@ class BatchInternOnboardingTest extends TestCase
                 'temporary_password_confirmation' => 'Temporary123!',
             ])
             ->assertForbidden();
+    }
+
+    public function test_admin_can_reset_intern_password_and_force_password_change(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $internUser = User::factory()->create([
+            'role' => UserRole::INTERN,
+            'password' => 'OldPassword123!',
+            'must_change_password' => false,
+        ]);
+        $intern = Intern::factory()->create([
+            'batch_id' => $batch->id,
+            'user_id' => $internUser->id,
+        ]);
+        $token = $internUser->createToken('mobile')->plainTextToken;
+
+        $this->actingAs($admin)
+            ->patch(route('batches.interns.password.reset', [$batch, $intern]), [
+                'temporary_password' => 'NewTemporary123!',
+                'temporary_password_confirmation' => 'NewTemporary123!',
+            ])
+            ->assertRedirect(route('batches.show', $batch));
+
+        $internUser->refresh();
+
+        $this->assertTrue(Hash::check('NewTemporary123!', $internUser->password));
+        $this->assertTrue($internUser->must_change_password);
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_id' => $internUser->id,
+            'name' => 'mobile',
+        ]);
+        $this->assertNotEmpty($token);
+    }
+
+    public function test_hr_can_reset_intern_password(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+        $internUser = User::factory()->create([
+            'role' => UserRole::INTERN,
+            'must_change_password' => false,
+        ]);
+        $intern = Intern::factory()->create([
+            'batch_id' => $batch->id,
+            'user_id' => $internUser->id,
+        ]);
+
+        $this->actingAs($hr)
+            ->patch(route('batches.interns.password.reset', [$batch, $intern]), [
+                'temporary_password' => 'HrTemporary123!',
+                'temporary_password_confirmation' => 'HrTemporary123!',
+            ])
+            ->assertRedirect(route('batches.show', $batch));
+
+        $internUser->refresh();
+
+        $this->assertTrue(Hash::check('HrTemporary123!', $internUser->password));
+        $this->assertTrue($internUser->must_change_password);
+    }
+
+    public function test_non_admin_or_hr_cannot_reset_intern_password(): void
+    {
+        $supervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+
+        $this->actingAs($supervisor)
+            ->patch(route('batches.interns.password.reset', [$batch, $intern]), [
+                'temporary_password' => 'Temporary123!',
+                'temporary_password_confirmation' => 'Temporary123!',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_cannot_reset_intern_password_through_wrong_batch(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $otherBatch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $otherBatch->id]);
+
+        $this->actingAs($admin)
+            ->patch(route('batches.interns.password.reset', [$batch, $intern]), [
+                'temporary_password' => 'Temporary123!',
+                'temporary_password_confirmation' => 'Temporary123!',
+            ])
+            ->assertNotFound();
     }
 }
