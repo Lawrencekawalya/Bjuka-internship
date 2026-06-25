@@ -1,4 +1,4 @@
 {
   "APP_ENV": "production",
-  "API_BASE_URL": "https://api.bjuka.com/api"
+  "API_BASE_URL": "https://bjukainternship.syntaxsystems.co/api"
 }
