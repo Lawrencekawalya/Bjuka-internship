@@ -47,6 +47,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import {
@@ -61,6 +70,7 @@ import type {
     BreadcrumbItem,
     Intern,
     Auth,
+    AttendanceRecord,
 } from '@/types';
 
 defineOptions({
@@ -70,6 +80,7 @@ defineOptions({
 interface Props {
     batch: InternshipBatch;
     stats: BatchStats;
+    batch_attendances: AttendanceRecord[];
 }
 
 const props = defineProps<Props>();
@@ -135,6 +146,59 @@ const getStatusVariant = (status: string) => {
         default:
             return 'default';
     }
+};
+
+const getAttendanceStatusVariant = (status: string) => {
+    switch (status) {
+        case 'present':
+            return 'default';
+        case 'late':
+            return 'secondary';
+        case 'partial':
+            return 'outline';
+        case 'absent':
+            return 'destructive';
+        default:
+            return 'default';
+    }
+};
+
+const formatDate = (value: string | null) => {
+    if (!value) {
+        return 'Not recorded';
+    }
+
+    return new Date(value).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+    });
+};
+
+const formatTime = (value: string | null) => {
+    if (!value) {
+        return 'Not recorded';
+    }
+
+    return new Date(value).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+const formatDuration = (minutes: number | null) => {
+    if (minutes === null) {
+        return 'In progress';
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (hours === 0) {
+        return `${remainingMinutes}m`;
+    }
+
+    return `${hours}h ${remainingMinutes}m`;
 };
 
 const closeBatchUrl = (batchId: string) => `/batches/${batchId}/close`;
@@ -1121,13 +1185,137 @@ const makeTemporaryPassword = () => {
                     <Card>
                         <CardHeader>
                             <CardTitle>Attendance Log</CardTitle>
+                            <CardDescription>
+                                Recent attendance records for this batch.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div
-                                class="flex h-[200px] items-center justify-center text-muted-foreground"
-                            >
-                                <Clock class="mr-2 h-4 w-4" />
-                                Attendance dashboard will be integrated here.
+                            <div class="overflow-hidden rounded-lg border">
+                                <Table>
+                                    <TableHeader class="bg-muted/40">
+                                        <TableRow class="hover:bg-transparent">
+                                            <TableHead class="min-w-[220px]">
+                                                Intern
+                                            </TableHead>
+                                            <TableHead class="w-[130px]">
+                                                Date
+                                            </TableHead>
+                                            <TableHead class="w-[120px]">
+                                                Check in
+                                            </TableHead>
+                                            <TableHead class="w-[120px]">
+                                                Check out
+                                            </TableHead>
+                                            <TableHead class="w-[120px]">
+                                                Duration
+                                            </TableHead>
+                                            <TableHead class="w-[110px]">
+                                                Status
+                                            </TableHead>
+                                            <TableHead class="min-w-[160px]">
+                                                Network
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow
+                                            v-for="attendance in batch_attendances"
+                                            :key="attendance.id"
+                                        >
+                                            <TableCell>
+                                                <div
+                                                    class="flex flex-col gap-1"
+                                                >
+                                                    <span class="font-medium">
+                                                        {{
+                                                            attendance.intern
+                                                                .name ||
+                                                            'Unknown intern'
+                                                        }}
+                                                    </span>
+                                                    <span
+                                                        class="text-xs text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            attendance.intern
+                                                                .registration_number ||
+                                                            attendance.intern
+                                                                .email ||
+                                                            'No identifier'
+                                                        }}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {{
+                                                    formatDate(attendance.date)
+                                                }}
+                                            </TableCell>
+                                            <TableCell>
+                                                {{
+                                                    formatTime(
+                                                        attendance.check_in_server_time,
+                                                    )
+                                                }}
+                                            </TableCell>
+                                            <TableCell>
+                                                {{
+                                                    formatTime(
+                                                        attendance.check_out_server_time,
+                                                    )
+                                                }}
+                                            </TableCell>
+                                            <TableCell>
+                                                {{
+                                                    formatDuration(
+                                                        attendance.work_duration_minutes,
+                                                    )
+                                                }}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    :variant="
+                                                        getAttendanceStatusVariant(
+                                                            attendance.status,
+                                                        )
+                                                    "
+                                                    class="px-2 py-0.5 text-[11px] font-medium capitalize"
+                                                >
+                                                    {{ attendance.status }}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div
+                                                    class="flex flex-col gap-1 text-xs"
+                                                >
+                                                    <span class="font-medium">
+                                                        {{
+                                                            attendance.wifi_ssid ||
+                                                            'Not recorded'
+                                                        }}
+                                                    </span>
+                                                    <span
+                                                        class="text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            attendance.wifi_bssid ||
+                                                            'No BSSID'
+                                                        }}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableEmpty
+                                            v-if="
+                                                batch_attendances.length === 0
+                                            "
+                                            :colspan="7"
+                                        >
+                                            No attendance records found for this
+                                            batch.
+                                        </TableEmpty>
+                                    </TableBody>
+                                </Table>
                             </div>
                         </CardContent>
                     </Card>

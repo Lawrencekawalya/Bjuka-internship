@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\BatchStatus;
+use App\Enums\InternStatus;
 use App\Models\ApprovedNetwork;
+use App\Models\Attendance;
 use App\Models\InternshipBatch;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -79,13 +82,58 @@ class InternshipBatchController extends Controller
             'approvedNetworks',
         ]);
 
-        // Dashboard Stats
+        $activeInterns = $batch->interns()->where('status', InternStatus::ACTIVE)->count();
+        $elapsedWorkingDays = $this->elapsedWorkingDays($batch);
+        $expectedAttendanceRecords = $activeInterns * $elapsedWorkingDays;
+        $actualAttendanceRecords = Attendance::query()
+            ->whereHas('intern', fn ($query) => $query->where('batch_id', $batch->id))
+            ->where('status', '!=', AttendanceStatus::ABSENT->value)
+            ->when($batch->start_date, fn ($query) => $query->whereDate('date', '>=', $batch->start_date))
+            ->when($batch->end_date, fn ($query) => $query->whereDate('date', '<=', $this->attendanceRateEndDate($batch)))
+            ->count();
+
+        $batchAttendances = Attendance::query()
+            ->with([
+                'intern.user:id,name,email',
+                'intern.batch:id,batch_code,name',
+            ])
+            ->whereHas('intern', fn ($query) => $query->where('batch_id', $batch->id))
+            ->orderByDesc('date')
+            ->orderByDesc('check_in_server_time')
+            ->limit(50)
+            ->get()
+            ->map(fn (Attendance $attendance) => [
+                'id' => $attendance->id,
+                'date' => $attendance->date?->toDateString(),
+                'check_in_server_time' => $attendance->check_in_server_time?->toIso8601String(),
+                'check_out_server_time' => $attendance->check_out_server_time?->toIso8601String(),
+                'work_duration_minutes' => $attendance->work_duration_minutes,
+                'status' => $attendance->status->value,
+                'wifi_ssid' => $attendance->wifi_ssid,
+                'wifi_bssid' => $attendance->wifi_bssid,
+                'intern' => [
+                    'id' => $attendance->intern?->id,
+                    'name' => $attendance->intern?->user?->name,
+                    'email' => $attendance->intern?->user?->email,
+                    'institution' => $attendance->intern?->institution,
+                    'registration_number' => $attendance->intern?->registration_number,
+                    'batch' => $attendance->intern?->batch ? [
+                        'id' => $attendance->intern->batch->id,
+                        'batch_code' => $attendance->intern->batch->batch_code,
+                        'name' => $attendance->intern->batch->name,
+                    ] : null,
+                ],
+            ])
+            ->values();
+
         $stats = [
             'total_interns' => $batch->interns()->count(),
             'present_today' => $batch->interns()->whereHas('attendances', function ($query) {
                 $query->whereDate('date', now()->toDateString());
             })->count(),
-            'attendance_rate' => 0, // Placeholder for aggregation logic
+            'attendance_rate' => $expectedAttendanceRecords > 0
+                ? round(($actualAttendanceRecords / $expectedAttendanceRecords) * 100)
+                : 0,
             'total_supervisors' => $batch->interns()->with('supervisors')->get()->pluck('supervisors')->flatten()->unique('id')->count(),
             'progress' => $batch->progress_percentage,
         ];
@@ -93,7 +141,40 @@ class InternshipBatchController extends Controller
         return Inertia::render('batches/Show', [
             'batch' => $batch,
             'stats' => $stats,
+            'batch_attendances' => $batchAttendances,
         ]);
+    }
+
+    private function elapsedWorkingDays(InternshipBatch $batch): int
+    {
+        if (! $batch->start_date || ! $batch->end_date) {
+            return 0;
+        }
+
+        $start = $batch->start_date->copy()->startOfDay();
+        $end = $this->attendanceRateEndDate($batch);
+
+        if ($end->isBefore($start)) {
+            return 0;
+        }
+
+        $workingDays = 0;
+
+        for ($date = $start->copy(); $date->lte($end); $date = $date->addDay()) {
+            if ($date->isWeekday()) {
+                $workingDays++;
+            }
+        }
+
+        return $workingDays;
+    }
+
+    private function attendanceRateEndDate(InternshipBatch $batch)
+    {
+        $today = today();
+        $batchEnd = $batch->end_date->copy()->startOfDay();
+
+        return $batchEnd->isBefore($today) ? $batchEnd : $today;
     }
 
     /**

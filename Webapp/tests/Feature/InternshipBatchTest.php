@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AttendanceStatus;
 use App\Enums\BatchStatus;
+use App\Enums\InternStatus;
 use App\Enums\UserRole;
+use App\Models\Attendance;
+use App\Models\Intern;
 use App\Models\InternshipBatch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class InternshipBatchTest extends TestCase
@@ -177,5 +182,51 @@ class InternshipBatchTest extends TestCase
         $batch->refresh();
         $this->assertNotNull($batch->deleted_at);
         $this->assertTrue($batch->trashed());
+    }
+
+    public function test_batch_show_calculates_attendance_rate_from_elapsed_weekdays_and_returns_attendance_log(): void
+    {
+        Carbon::setTestNow('2026-06-19 12:00:00');
+        $batch = InternshipBatch::factory()->create([
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-07-15',
+        ]);
+        $interns = Intern::factory()->count(2)->create([
+            'batch_id' => $batch->id,
+            'status' => InternStatus::ACTIVE,
+        ]);
+
+        foreach ([
+            ['intern' => $interns[0], 'date' => '2026-06-15'],
+            ['intern' => $interns[0], 'date' => '2026-06-16'],
+            ['intern' => $interns[0], 'date' => '2026-06-17'],
+            ['intern' => $interns[0], 'date' => '2026-06-18'],
+            ['intern' => $interns[1], 'date' => '2026-06-15'],
+            ['intern' => $interns[1], 'date' => '2026-06-16'],
+            ['intern' => $interns[1], 'date' => '2026-06-17'],
+        ] as $record) {
+            Attendance::factory()->create([
+                'intern_id' => $record['intern']->id,
+                'date' => $record['date'],
+                'check_in_server_time' => $record['date'].' 08:30:00',
+                'status' => AttendanceStatus::PRESENT,
+            ]);
+        }
+
+        $this->actingAs($this->admin)
+            ->get(route('batches.show', $batch))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('batches/Show')
+                ->where('stats.attendance_rate', 70)
+                ->has('batch_attendances', 7)
+            );
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 }
