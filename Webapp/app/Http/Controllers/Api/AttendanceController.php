@@ -191,7 +191,7 @@ class AttendanceController extends Controller
 
     private function statusForCheckIn(CarbonInterface $serverTime): AttendanceStatus
     {
-        return $serverTime->greaterThan($serverTime->copy()->setTime(9, 0))
+        return $serverTime->greaterThan($serverTime->copy()->setTime(9, 30))
             ? AttendanceStatus::LATE
             : AttendanceStatus::PRESENT;
     }

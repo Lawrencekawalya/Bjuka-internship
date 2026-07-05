@@ -41,6 +41,36 @@ class AttendanceTest extends TestCase
         ]);
     }
 
+    public function test_check_in_at_nine_thirty_is_still_present(): void
+    {
+        Carbon::setTestNow('2026-06-24 09:30:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T09:30:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attendance.status', AttendanceStatus::PRESENT->value);
+    }
+
+    public function test_check_in_after_nine_thirty_is_late(): void
+    {
+        Carbon::setTestNow('2026-06-24 09:31:00');
+        $user = $this->activeInternUser();
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T09:31:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('attendance.status', AttendanceStatus::LATE->value);
+    }
+
     public function test_intern_cannot_check_in_without_wifi_details(): void
     {
         Carbon::setTestNow('2026-06-24 08:30:00');
