@@ -35,6 +35,8 @@ export interface Intern {
     course: string | null;
     registration_number: string | null;
     status: string;
+    certificate_path?: string | null;
+    certificate_url?: string | null;
     user?: User;
 }
 

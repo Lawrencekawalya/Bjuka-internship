@@ -55,12 +55,14 @@ class AttendanceStateResponse {
   final bool canCheckIn;
   final bool canCheckOut;
   final int batchProgressPercentage;
+  final String? certificateDownloadUrl;
 
   AttendanceStateResponse({
     required this.attendance,
     required this.canCheckIn,
     required this.canCheckOut,
     required this.batchProgressPercentage,
+    this.certificateDownloadUrl,
   });
 
   factory AttendanceStateResponse.fromJson(Map<String, dynamic> json) {
@@ -73,6 +75,7 @@ class AttendanceStateResponse {
       canCheckIn: json['can_check_in'] == true,
       canCheckOut: json['can_check_out'] == true,
       batchProgressPercentage: _parseInt(json['batch_progress_percentage']),
+      certificateDownloadUrl: json['certificate_download_url'] as String?,
     );
   }
 

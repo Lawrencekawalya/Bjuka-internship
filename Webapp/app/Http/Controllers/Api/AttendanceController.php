@@ -29,11 +29,16 @@ class AttendanceController extends Controller
         $intern->loadMissing('batch');
         $attendance = $this->todayAttendance($intern->id);
 
+        $batchProgressPercentage = $intern->batch?->progress_percentage ?? 0;
+
         return response()->json([
             'attendance' => $attendance ? $this->attendancePayload($attendance) : null,
             'can_check_in' => ! $attendance,
             'can_check_out' => $attendance && ! $attendance->check_out_server_time,
-            'batch_progress_percentage' => $intern->batch?->progress_percentage ?? 0,
+            'batch_progress_percentage' => $batchProgressPercentage,
+            'certificate_download_url' => $batchProgressPercentage >= 100
+                ? $intern->certificate_url
+                : null,
         ]);
     }
 

@@ -12,6 +12,7 @@ class AttendanceState {
   final bool canCheckIn;
   final bool canCheckOut;
   final int batchProgressPercentage;
+  final String? certificateDownloadUrl;
   final String? errorMessage;
   final String? successMessage;
 
@@ -21,6 +22,7 @@ class AttendanceState {
     required this.canCheckIn,
     required this.canCheckOut,
     required this.batchProgressPercentage,
+    this.certificateDownloadUrl,
     this.attendance,
     this.errorMessage,
     this.successMessage,
@@ -43,6 +45,7 @@ class AttendanceState {
     bool? canCheckIn,
     bool? canCheckOut,
     int? batchProgressPercentage,
+    String? certificateDownloadUrl,
     String? errorMessage,
     String? successMessage,
     bool clearAttendance = false,
@@ -56,6 +59,8 @@ class AttendanceState {
       canCheckOut: canCheckOut ?? this.canCheckOut,
       batchProgressPercentage:
           batchProgressPercentage ?? this.batchProgressPercentage,
+      certificateDownloadUrl:
+          certificateDownloadUrl ?? this.certificateDownloadUrl,
       errorMessage: clearMessages ? null : errorMessage,
       successMessage: clearMessages ? null : successMessage,
     );
@@ -84,6 +89,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         canCheckIn: response.canCheckIn,
         canCheckOut: response.canCheckOut,
         batchProgressPercentage: response.batchProgressPercentage,
+        certificateDownloadUrl: response.certificateDownloadUrl,
       );
     } catch (e) {
       state = state.copyWith(

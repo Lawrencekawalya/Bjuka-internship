@@ -359,6 +359,9 @@ class AttendanceTest extends TestCase
             'start_date' => '2026-06-01',
             'end_date' => '2026-07-01',
         ]);
+        $user->intern->update([
+            'certificate_path' => 'certificates/demo.pdf',
+        ]);
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/attendance/today')
@@ -366,7 +369,27 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('attendance', null)
             ->assertJsonPath('can_check_in', true)
             ->assertJsonPath('can_check_out', false)
-            ->assertJsonPath('batch_progress_percentage', 77);
+            ->assertJsonPath('batch_progress_percentage', 77)
+            ->assertJsonPath('certificate_download_url', null);
+    }
+
+    public function test_today_endpoint_returns_certificate_download_url_after_completion(): void
+    {
+        Carbon::setTestNow('2026-07-02 10:00:00');
+        $user = $this->activeInternUser();
+        $user->intern->batch->update([
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-07-01',
+        ]);
+        $user->intern->update([
+            'certificate_path' => 'certificates/demo.pdf',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/attendance/today')
+            ->assertOk()
+            ->assertJsonPath('batch_progress_percentage', 100)
+            ->assertJsonPath('certificate_download_url', url('/storage/certificates/demo.pdf'));
     }
 
     public function test_intern_can_view_only_their_attendance_history(): void

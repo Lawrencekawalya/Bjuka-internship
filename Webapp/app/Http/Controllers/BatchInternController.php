@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -83,6 +84,30 @@ class BatchInternController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => 'Intern password reset successfully. They must change the temporary password on next login.',
+        ]);
+
+        return redirect()->route('batches.show', $batch);
+    }
+
+    public function storeCertificate(Request $request, InternshipBatch $batch, Intern $intern): RedirectResponse
+    {
+        abort_unless($intern->batch_id === $batch->id, 404);
+
+        $validated = $request->validate([
+            'certificate_file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ]);
+
+        if ($intern->certificate_path) {
+            Storage::disk('public')->delete($intern->certificate_path);
+        }
+
+        $intern->update([
+            'certificate_path' => $validated['certificate_file']->store('certificates', 'public'),
+        ]);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Intern certificate uploaded successfully.',
         ]);
 
         return redirect()->route('batches.show', $batch);

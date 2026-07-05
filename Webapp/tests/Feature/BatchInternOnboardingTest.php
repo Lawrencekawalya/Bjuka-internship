@@ -156,4 +156,37 @@ class BatchInternOnboardingTest extends TestCase
             ])
             ->assertNotFound();
     }
+
+    public function test_admin_can_upload_intern_certificate(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+
+        $this->actingAs($admin)
+            ->post(route('batches.interns.certificate.store', [$batch, $intern]), [
+                'certificate_file' => UploadedFile::fake()->create('certificate.pdf', 128, 'application/pdf'),
+            ])
+            ->assertRedirect(route('batches.show', $batch));
+
+        $intern->refresh();
+
+        $this->assertNotNull($intern->certificate_path);
+        Storage::disk('public')->assertExists($intern->certificate_path);
+    }
+
+    public function test_non_admin_cannot_upload_intern_certificate(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+
+        $this->actingAs($hr)
+            ->post(route('batches.interns.certificate.store', [$batch, $intern]), [
+                'certificate_file' => UploadedFile::fake()->create('certificate.pdf', 128, 'application/pdf'),
+            ])
+            ->assertForbidden();
+    }
 }

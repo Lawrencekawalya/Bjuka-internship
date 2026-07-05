@@ -20,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
+        Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
+            ->name('batches.interns.certificate.store');
         Route::resource('batches', InternshipBatchController::class)->except(['index', 'show']);
     });
 

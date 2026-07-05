@@ -15,6 +15,8 @@ import {
     Settings,
     UserPlus,
     KeyRound,
+    Upload,
+    Award,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
@@ -76,7 +78,9 @@ const page = usePage<{ auth: Auth }>();
 const activeTab = ref('overview');
 const isAddInternOpen = ref(false);
 const isResetPasswordOpen = ref(false);
+const isCertificateOpen = ref(false);
 const selectedIntern = ref<Intern | null>(null);
+const selectedCertificateIntern = ref<Intern | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 const canResetInternPassword = computed(() =>
     ['admin', 'hr'].includes(String(page.props.auth.user.role)),
@@ -97,6 +101,10 @@ const internForm = useForm({
 const resetPasswordForm = useForm({
     temporary_password: '',
     temporary_password_confirmation: '',
+});
+
+const certificateForm = useForm({
+    certificate_file: null as File | null,
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -133,6 +141,8 @@ const closeBatchUrl = (batchId: string) => `/batches/${batchId}/close`;
 const batchInternsUrl = (batchId: string) => `/batches/${batchId}/interns`;
 const resetInternPasswordUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/password`;
+const internCertificateUrl = (batchId: string, internId: string) =>
+    `/batches/${batchId}/interns/${internId}/certificate`;
 
 const closeBatch = () => {
     if (
@@ -191,6 +201,41 @@ const resetInternPassword = () => {
                 selectedIntern.value = null;
                 resetPasswordForm.reset();
                 resetPasswordForm.clearErrors();
+            },
+        },
+    );
+};
+
+const openCertificateDialog = (intern: Intern) => {
+    selectedCertificateIntern.value = intern;
+    certificateForm.reset();
+    certificateForm.clearErrors();
+    isCertificateOpen.value = true;
+};
+
+const handleCertificateFile = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    certificateForm.certificate_file = input.files?.[0] ?? null;
+};
+
+const uploadCertificate = () => {
+    if (!selectedCertificateIntern.value) {
+        return;
+    }
+
+    certificateForm.post(
+        internCertificateUrl(
+            props.batch.id,
+            selectedCertificateIntern.value.id,
+        ),
+        {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                isCertificateOpen.value = false;
+                selectedCertificateIntern.value = null;
+                certificateForm.reset();
+                certificateForm.clearErrors();
             },
         },
     );
@@ -860,15 +905,39 @@ const makeTemporaryPassword = () => {
                                     >
                                         {{ intern.status }}
                                     </Badge>
-                                    <Button
-                                        v-if="canResetInternPassword"
-                                        variant="outline"
-                                        size="sm"
-                                        @click="openResetPasswordDialog(intern)"
+                                    <div
+                                        class="flex flex-wrap justify-end gap-2"
                                     >
-                                        <KeyRound class="mr-2 h-4 w-4" />
-                                        Reset password
-                                    </Button>
+                                        <Badge
+                                            v-if="intern.certificate_url"
+                                            variant="outline"
+                                        >
+                                            <Award class="mr-1 h-3 w-3" />
+                                            Certificate
+                                        </Badge>
+                                        <Button
+                                            v-if="isAdmin"
+                                            variant="outline"
+                                            size="sm"
+                                            @click="
+                                                openCertificateDialog(intern)
+                                            "
+                                        >
+                                            <Upload class="mr-2 h-4 w-4" />
+                                            Certificate
+                                        </Button>
+                                        <Button
+                                            v-if="canResetInternPassword"
+                                            variant="outline"
+                                            size="sm"
+                                            @click="
+                                                openResetPasswordDialog(intern)
+                                            "
+                                        >
+                                            <KeyRound class="mr-2 h-4 w-4" />
+                                            Reset password
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                             <div
@@ -970,6 +1039,76 @@ const makeTemporaryPassword = () => {
                                             resetPasswordForm.processing
                                                 ? 'Resetting...'
                                                 : 'Reset Password'
+                                        }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog v-model:open="isCertificateOpen">
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Upload Certificate</DialogTitle>
+                                <DialogDescription>
+                                    Attach a PDF or image certificate for
+                                    {{ selectedCertificateIntern?.user?.name }}.
+                                    It becomes available in the mobile app after
+                                    the internship reaches 100%.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form
+                                class="grid gap-4"
+                                @submit.prevent="uploadCertificate"
+                            >
+                                <div class="grid gap-2">
+                                    <Label for="certificate_file">
+                                        Certificate file
+                                    </Label>
+                                    <Input
+                                        id="certificate_file"
+                                        type="file"
+                                        accept=".pdf,image/png,image/jpeg"
+                                        :class="{
+                                            'border-destructive':
+                                                certificateForm.errors
+                                                    .certificate_file,
+                                        }"
+                                        @change="handleCertificateFile"
+                                    />
+                                    <p
+                                        v-if="
+                                            certificateForm.errors
+                                                .certificate_file
+                                        "
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{
+                                            certificateForm.errors
+                                                .certificate_file
+                                        }}
+                                    </p>
+                                </div>
+
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="isCertificateOpen = false"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        :disabled="
+                                            certificateForm.processing ||
+                                            !certificateForm.certificate_file
+                                        "
+                                    >
+                                        {{
+                                            certificateForm.processing
+                                                ? 'Uploading...'
+                                                : 'Upload Certificate'
                                         }}
                                     </Button>
                                 </DialogFooter>

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../../core/network/wifi_info_service.dart';
 import '../../data/models/attendance_model.dart';
 import '../../data/models/user_model.dart';
@@ -126,7 +127,11 @@ class _AttendanceDashboardScreenState
                         ),
                         const SizedBox(height: 16),
                         if (hasCompletedInternship)
-                          _InternshipCompletionCard(user: authState.user)
+                          _InternshipCompletionCard(
+                            user: authState.user,
+                            certificateDownloadUrl:
+                                attendanceState.certificateDownloadUrl,
+                          )
                         else ...[
                           _StatusCard(attendance: attendanceState.attendance),
                           const SizedBox(height: 16),
@@ -519,8 +524,12 @@ class _BatchProgressCard extends StatelessWidget {
 
 class _InternshipCompletionCard extends StatefulWidget {
   final User? user;
+  final String? certificateDownloadUrl;
 
-  const _InternshipCompletionCard({required this.user});
+  const _InternshipCompletionCard({
+    required this.user,
+    required this.certificateDownloadUrl,
+  });
 
   @override
   State<_InternshipCompletionCard> createState() =>
@@ -642,15 +651,7 @@ class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
                   ),
                   const SizedBox(height: 18),
                   FilledButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Certificate download will be available soon.',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _openCertificate(context),
                     icon: const Icon(Icons.download),
                     label: const Text('Get your certificate'),
                   ),
@@ -671,6 +672,31 @@ class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
     }
 
     return ', ${name.split(RegExp(r'\s+')).first}';
+  }
+
+  Future<void> _openCertificate(BuildContext context) async {
+    final url = widget.certificateDownloadUrl;
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (url == null || url.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Your certificate is not available yet.')),
+      );
+
+      return;
+    }
+
+    try {
+      await const MethodChannel(
+        'com.bjuka/certificate',
+      ).invokeMethod<void>('openCertificate', {'url': url});
+    } on PlatformException {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not open the certificate. Please try again.'),
+        ),
+      );
+    }
   }
 }
 
