@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/network/wifi_info_service.dart';
@@ -31,6 +33,8 @@ class _AttendanceDashboardScreenState
     final attendanceState = ref.watch(attendanceStateProvider);
     final wifiState = ref.watch(currentWifiProvider);
     final theme = Theme.of(context);
+    final hasCompletedInternship =
+        attendanceState.batchProgressPercentage >= 100;
 
     ref.listen(attendanceStateProvider, (previous, next) {
       final message = next.errorMessage ?? next.successMessage;
@@ -103,31 +107,45 @@ class _AttendanceDashboardScreenState
         ],
       ),
       body: SafeArea(
-        child: attendanceState.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _refreshAttendanceAndWifi,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _WelcomeHeader(user: authState.user, wifiState: wifiState),
-                    const SizedBox(height: 16),
-                    _BatchProgressCard(
-                      percentage: attendanceState.batchProgressPercentage,
+        child: Stack(
+          children: [
+            attendanceState.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _refreshAttendanceAndWifi,
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _WelcomeHeader(
+                          user: authState.user,
+                          wifiState: wifiState,
+                        ),
+                        const SizedBox(height: 16),
+                        _BatchProgressCard(
+                          percentage: attendanceState.batchProgressPercentage,
+                        ),
+                        const SizedBox(height: 16),
+                        if (hasCompletedInternship)
+                          _InternshipCompletionCard(user: authState.user)
+                        else ...[
+                          _StatusCard(attendance: attendanceState.attendance),
+                          const SizedBox(height: 16),
+                          _ActionPanel(
+                            canCheckIn: attendanceState.canCheckIn,
+                            canCheckOut: attendanceState.canCheckOut,
+                            isSubmitting: attendanceState.isSubmitting,
+                          ),
+                          const SizedBox(height: 16),
+                          _AttendanceDetails(
+                            attendance: attendanceState.attendance,
+                          ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    _StatusCard(attendance: attendanceState.attendance),
-                    const SizedBox(height: 16),
-                    _ActionPanel(
-                      canCheckIn: attendanceState.canCheckIn,
-                      canCheckOut: attendanceState.canCheckOut,
-                      isSubmitting: attendanceState.isSubmitting,
-                    ),
-                    const SizedBox(height: 16),
-                    _AttendanceDetails(attendance: attendanceState.attendance),
-                  ],
-                ),
-              ),
+                  ),
+            if (hasCompletedInternship) const _FullScreenParticles(),
+          ],
+        ),
       ),
     );
   }
@@ -135,6 +153,60 @@ class _AttendanceDashboardScreenState
   Future<void> _refreshAttendanceAndWifi() async {
     ref.invalidate(currentWifiProvider);
     await ref.read(attendanceStateProvider.notifier).loadToday();
+  }
+}
+
+class _FullScreenParticles extends StatefulWidget {
+  const _FullScreenParticles();
+
+  @override
+  State<_FullScreenParticles> createState() => _FullScreenParticlesState();
+}
+
+class _FullScreenParticlesState extends State<_FullScreenParticles>
+    with SingleTickerProviderStateMixin {
+  static const double _height = 380;
+
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: _height,
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            return CustomPaint(
+              painter: _FallingParticlesPainter(
+                progress: _controller.value,
+                colorScheme: colorScheme,
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 
@@ -376,7 +448,7 @@ class _BatchProgressCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Batch progress',
+                        'Internship progress',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -443,6 +515,262 @@ class _BatchProgressCard extends StatelessWidget {
 
     return 'The batch period is complete.';
   }
+}
+
+class _InternshipCompletionCard extends StatefulWidget {
+  final User? user;
+
+  const _InternshipCompletionCard({required this.user});
+
+  @override
+  State<_InternshipCompletionCard> createState() =>
+      _InternshipCompletionCardState();
+}
+
+class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 310,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.45),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) {
+                        final pulse =
+                            1 +
+                            (math.sin(_controller.value * math.pi * 2) * 0.04);
+
+                        return Transform.scale(scale: pulse, child: child);
+                      },
+                      child: Container(
+                        width: 92,
+                        height: 92,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.green.withValues(alpha: 0.16),
+                          border: Border.all(color: Colors.green, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withValues(alpha: 0.22),
+                              blurRadius: 28,
+                              spreadRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            const Icon(
+                              Icons.workspace_premium,
+                              color: Colors.green,
+                              size: 48,
+                            ),
+                            Positioned(
+                              top: 15,
+                              right: 17,
+                              child: _SparkleDot(
+                                animation: _controller,
+                                delay: 0.0,
+                              ),
+                            ),
+                            Positioned(
+                              left: 17,
+                              bottom: 19,
+                              child: _SparkleDot(
+                                animation: _controller,
+                                delay: 0.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Congratulations${_firstName(widget.user)}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You have completed your internship with us.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Certificate download will be available soon.',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Get your certificate'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _firstName(User? user) {
+    final name = user?.name.trim() ?? '';
+
+    if (name.isEmpty) {
+      return '';
+    }
+
+    return ', ${name.split(RegExp(r'\s+')).first}';
+  }
+}
+
+class _SparkleDot extends StatelessWidget {
+  final Animation<double> animation;
+  final double delay;
+
+  const _SparkleDot({required this.animation, required this.delay});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final value = (animation.value + delay) % 1;
+        final opacity = 0.35 + (math.sin(value * math.pi * 2).abs() * 0.65);
+        final size = 5 + (math.sin(value * math.pi * 2).abs() * 5);
+
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.amber.withValues(alpha: opacity),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FallingParticlesPainter extends CustomPainter {
+  final double progress;
+  final ColorScheme colorScheme;
+
+  _FallingParticlesPainter({required this.progress, required this.colorScheme});
+
+  static const List<_ParticleSeed> _particles = [
+    _ParticleSeed(0.08, 0.02, 0.90, 3.5),
+    _ParticleSeed(0.18, 0.34, 0.74, 4.0),
+    _ParticleSeed(0.28, 0.18, 1.00, 3.0),
+    _ParticleSeed(0.39, 0.52, 0.82, 5.0),
+    _ParticleSeed(0.50, 0.09, 0.92, 3.5),
+    _ParticleSeed(0.62, 0.43, 0.76, 4.5),
+    _ParticleSeed(0.74, 0.25, 0.88, 3.0),
+    _ParticleSeed(0.86, 0.57, 0.96, 4.0),
+    _ParticleSeed(0.94, 0.12, 0.80, 3.5),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      Colors.green,
+      Colors.amber,
+      colorScheme.primary,
+      Colors.lightBlue,
+    ];
+
+    for (var index = 0; index < _particles.length; index += 1) {
+      final seed = _particles[index];
+      final fall = (progress * seed.speed + seed.phase) % 1;
+      final x =
+          (seed.x * size.width) +
+          (math.sin((fall + seed.phase) * math.pi * 2) * 14);
+      final y = (fall * (size.height + 34)) - 24;
+      final paint = Paint()
+        ..color = colors[index % colors.length].withValues(alpha: 0.72);
+
+      canvas.save();
+      canvas.translate(x, y);
+      canvas.rotate((fall + seed.phase) * math.pi * 2);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset.zero,
+            width: seed.size * 1.8,
+            height: seed.size,
+          ),
+          const Radius.circular(2),
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _FallingParticlesPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.colorScheme != colorScheme;
+  }
+}
+
+class _ParticleSeed {
+  final double x;
+  final double phase;
+  final double speed;
+  final double size;
+
+  const _ParticleSeed(this.x, this.phase, this.speed, this.size);
 }
 
 class _StatusCard extends StatelessWidget {
