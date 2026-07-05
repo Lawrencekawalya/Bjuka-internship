@@ -651,7 +651,7 @@ class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
                   ),
                   const SizedBox(height: 18),
                   FilledButton.icon(
-                    onPressed: () => _openCertificate(context),
+                    onPressed: () => _showCertificateActions(context),
                     icon: const Icon(Icons.download),
                     label: const Text('Get your certificate'),
                   ),
@@ -674,7 +674,7 @@ class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
     return ', ${name.split(RegExp(r'\s+')).first}';
   }
 
-  Future<void> _openCertificate(BuildContext context) async {
+  Future<void> _showCertificateActions(BuildContext context) async {
     final url = widget.certificateDownloadUrl;
     final messenger = ScaffoldMessenger.of(context);
 
@@ -686,19 +686,99 @@ class _InternshipCompletionCardState extends State<_InternshipCompletionCard>
       return;
     }
 
+    final action = await showModalBottomSheet<_CertificateAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.visibility),
+                title: const Text('View Certificate'),
+                onTap: () => Navigator.of(context).pop(_CertificateAction.view),
+              ),
+              ListTile(
+                leading: const Icon(Icons.download),
+                title: const Text('Download Certificate'),
+                subtitle: Text(_certificateFileName()),
+                onTap: () =>
+                    Navigator.of(context).pop(_CertificateAction.download),
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share Certificate'),
+                onTap: () =>
+                    Navigator.of(context).pop(_CertificateAction.share),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (action == null) {
+      return;
+    }
+
     try {
-      await const MethodChannel(
-        'com.bjuka/certificate',
-      ).invokeMethod<void>('openCertificate', {'url': url});
+      switch (action) {
+        case _CertificateAction.view:
+          await _certificateChannel.invokeMethod<void>('openCertificate', {
+            'url': url,
+          });
+        case _CertificateAction.download:
+          await _certificateChannel.invokeMethod<void>('downloadCertificate', {
+            'url': url,
+            'fileName': _certificateFileName(),
+          });
+          messenger.showSnackBar(
+            SnackBar(content: Text('Downloading ${_certificateFileName()}')),
+          );
+        case _CertificateAction.share:
+          await _certificateChannel.invokeMethod<void>('shareCertificate', {
+            'url': url,
+          });
+      }
     } on PlatformException {
       messenger.showSnackBar(
         const SnackBar(
-          content: Text('Could not open the certificate. Please try again.'),
+          content: Text('Could not handle the certificate. Please try again.'),
         ),
       );
     }
   }
+
+  String _certificateFileName() {
+    final rawName = widget.user?.name.trim() ?? 'Intern';
+    final safeName = rawName
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    final extension = _certificateExtension();
+
+    return 'BJUKA_Certificate_${safeName.isEmpty ? 'Intern' : safeName}.$extension';
+  }
+
+  String _certificateExtension() {
+    final path = Uri.tryParse(widget.certificateDownloadUrl ?? '')?.path ?? '';
+    final extensionMatch = RegExp(r'\.([A-Za-z0-9]+)$').firstMatch(path);
+    final extension = extensionMatch?.group(1)?.toLowerCase();
+
+    if (extension == 'jpg' || extension == 'jpeg' || extension == 'png') {
+      return extension!;
+    }
+
+    return 'pdf';
+  }
 }
+
+const MethodChannel _certificateChannel = MethodChannel(
+  'com.bjuka/certificate',
+);
+
+enum _CertificateAction { view, download, share }
 
 class _SparkleDot extends StatelessWidget {
   final Animation<double> animation;
