@@ -355,13 +355,18 @@ class AttendanceTest extends TestCase
     {
         Carbon::setTestNow('2026-06-24 10:00:00');
         $user = $this->activeInternUser();
+        $user->intern->batch->update([
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-07-01',
+        ]);
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/attendance/today')
             ->assertOk()
             ->assertJsonPath('attendance', null)
             ->assertJsonPath('can_check_in', true)
-            ->assertJsonPath('can_check_out', false);
+            ->assertJsonPath('can_check_out', false)
+            ->assertJsonPath('batch_progress_percentage', 77);
     }
 
     public function test_intern_can_view_only_their_attendance_history(): void

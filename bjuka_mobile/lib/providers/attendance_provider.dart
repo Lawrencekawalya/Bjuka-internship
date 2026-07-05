@@ -11,6 +11,7 @@ class AttendanceState {
   final Attendance? attendance;
   final bool canCheckIn;
   final bool canCheckOut;
+  final int batchProgressPercentage;
   final String? errorMessage;
   final String? successMessage;
 
@@ -19,6 +20,7 @@ class AttendanceState {
     required this.isSubmitting,
     required this.canCheckIn,
     required this.canCheckOut,
+    required this.batchProgressPercentage,
     this.attendance,
     this.errorMessage,
     this.successMessage,
@@ -30,6 +32,7 @@ class AttendanceState {
       isSubmitting: false,
       canCheckIn: false,
       canCheckOut: false,
+      batchProgressPercentage: 0,
     );
   }
 
@@ -39,6 +42,7 @@ class AttendanceState {
     Attendance? attendance,
     bool? canCheckIn,
     bool? canCheckOut,
+    int? batchProgressPercentage,
     String? errorMessage,
     String? successMessage,
     bool clearAttendance = false,
@@ -50,6 +54,8 @@ class AttendanceState {
       attendance: clearAttendance ? null : attendance ?? this.attendance,
       canCheckIn: canCheckIn ?? this.canCheckIn,
       canCheckOut: canCheckOut ?? this.canCheckOut,
+      batchProgressPercentage:
+          batchProgressPercentage ?? this.batchProgressPercentage,
       errorMessage: clearMessages ? null : errorMessage,
       successMessage: clearMessages ? null : successMessage,
     );
@@ -77,6 +83,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         clearAttendance: response.attendance == null,
         canCheckIn: response.canCheckIn,
         canCheckOut: response.canCheckOut,
+        batchProgressPercentage: response.batchProgressPercentage,
       );
     } catch (e) {
       state = state.copyWith(

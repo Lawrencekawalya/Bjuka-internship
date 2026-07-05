@@ -26,12 +26,14 @@ class AttendanceController extends Controller
             ], 403);
         }
 
+        $intern->loadMissing('batch');
         $attendance = $this->todayAttendance($intern->id);
 
         return response()->json([
             'attendance' => $attendance ? $this->attendancePayload($attendance) : null,
             'can_check_in' => ! $attendance,
             'can_check_out' => $attendance && ! $attendance->check_out_server_time,
+            'batch_progress_percentage' => $intern->batch?->progress_percentage ?? 0,
         ]);
     }
 

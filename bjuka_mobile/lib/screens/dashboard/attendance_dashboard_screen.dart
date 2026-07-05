@@ -112,6 +112,10 @@ class _AttendanceDashboardScreenState
                   children: [
                     _WelcomeHeader(user: authState.user, wifiState: wifiState),
                     const SizedBox(height: 16),
+                    _BatchProgressCard(
+                      percentage: attendanceState.batchProgressPercentage,
+                    ),
+                    const SizedBox(height: 16),
                     _StatusCard(attendance: attendanceState.attendance),
                     const SizedBox(height: 16),
                     _ActionPanel(
@@ -339,6 +343,105 @@ class _WifiStatusPill extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _BatchProgressCard extends StatelessWidget {
+  final int percentage;
+
+  const _BatchProgressCard({required this.percentage});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final clampedPercentage = percentage.clamp(0, 100);
+    final progressColor = _progressColor(clampedPercentage, theme);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: progressColor.withValues(alpha: 0.12),
+                  child: Icon(Icons.timeline, color: progressColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Batch progress',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _progressLabel(clampedPercentage),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$clampedPercentage%',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: progressColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: clampedPercentage / 100,
+                minHeight: 8,
+                color: progressColor,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _progressColor(int percentage, ThemeData theme) {
+    if (percentage < 35) {
+      return Colors.orange;
+    }
+
+    if (percentage < 70) {
+      return theme.colorScheme.primary;
+    }
+
+    return Colors.green;
+  }
+
+  String _progressLabel(int percentage) {
+    if (percentage < 35) {
+      return 'The batch is in its early stage.';
+    }
+
+    if (percentage < 70) {
+      return 'The batch is around the middle of its period.';
+    }
+
+    if (percentage < 100) {
+      return 'The batch is approaching completion.';
+    }
+
+    return 'The batch period is complete.';
   }
 }
 

@@ -54,11 +54,13 @@ class AttendanceStateResponse {
   final Attendance? attendance;
   final bool canCheckIn;
   final bool canCheckOut;
+  final int batchProgressPercentage;
 
   AttendanceStateResponse({
     required this.attendance,
     required this.canCheckIn,
     required this.canCheckOut,
+    required this.batchProgressPercentage,
   });
 
   factory AttendanceStateResponse.fromJson(Map<String, dynamic> json) {
@@ -70,7 +72,20 @@ class AttendanceStateResponse {
           : Attendance.fromJson(attendanceJson as Map<String, dynamic>),
       canCheckIn: json['can_check_in'] == true,
       canCheckOut: json['can_check_out'] == true,
+      batchProgressPercentage: _parseInt(json['batch_progress_percentage']),
     );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.round();
+    }
+
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
 
