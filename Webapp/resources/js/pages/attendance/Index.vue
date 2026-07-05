@@ -253,10 +253,13 @@ const importAttendance = () => {
                                     {{ importForm.errors.attendance_file }}
                                 </p>
                             </div>
-                            <div
-                                class="rounded-md bg-muted p-3 font-mono text-xs"
-                            >
-                                date,intern_email,check_in_time,check_out_time,wifi_ssid,activities
+                            <div class="grid gap-2">
+                                <p class="text-xs text-muted-foreground">
+                                    CSV header example
+                                </p>
+                                <pre
+                                    class="max-w-full overflow-x-auto rounded-md bg-muted p-3 text-xs whitespace-pre"
+                                ><code>date,intern_email,check_in_time,check_out_time,wifi_ssid,activities</code></pre>
                             </div>
                             <DialogFooter>
                                 <Button
