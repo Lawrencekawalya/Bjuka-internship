@@ -303,7 +303,7 @@ class AttendanceController extends Controller
             return Carbon::parse((string) $value)->startOfDay();
         } catch (\Throwable) {
             throw ValidationException::withMessages([
-                'date' => 'Date must be a valid date.',
+                'date' => 'Date must be valid. Use YYYY-MM-DD, for example 2026-06-24.',
             ]);
         }
     }

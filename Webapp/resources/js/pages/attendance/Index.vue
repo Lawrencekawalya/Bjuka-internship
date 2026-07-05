@@ -255,11 +255,12 @@ const importAttendance = () => {
                             </div>
                             <div class="grid gap-2">
                                 <p class="text-xs text-muted-foreground">
-                                    CSV header example
+                                    Use YYYY-MM-DD dates and 24-hour times.
                                 </p>
                                 <pre
                                     class="max-w-full overflow-x-auto rounded-md bg-muted p-3 text-xs whitespace-pre"
-                                ><code>date,intern_email,check_in_time,check_out_time,wifi_ssid,activities</code></pre>
+                                ><code>date,intern_email,check_in_time,check_out_time,wifi_ssid,activities
+2026-06-24,victor@example.com,09:30,17:00,BJUKA_WIFI,Worked on Laravel tasks</code></pre>
                             </div>
                             <DialogFooter>
                                 <Button
