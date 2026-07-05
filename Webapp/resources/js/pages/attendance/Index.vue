@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { Search, X } from '@lucide/vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Search, Upload, X } from '@lucide/vue';
 import { computed, reactive } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -23,7 +33,7 @@ import {
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
-import type { AttendanceRecord, BreadcrumbItem } from '@/types';
+import type { AttendanceRecord, Auth, BreadcrumbItem } from '@/types';
 
 type PaginationLink = {
     url: string | null;
@@ -60,11 +70,15 @@ interface Props {
         label: string;
         value: string;
     }[];
+    import_errors: string[];
 }
 
 const props = defineProps<Props>();
+const page = usePage<{ auth: Auth }>();
 
 const attendanceHref = '/attendances';
+const attendanceImportHref = '/attendances/import';
+const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -81,6 +95,10 @@ const form = reactive({
     search: props.filters.search,
     date: props.filters.date,
     status: props.filters.status || 'all',
+});
+
+const importForm = useForm({
+    attendance_file: null as File | null,
 });
 
 const hasFilters = computed(
@@ -163,6 +181,22 @@ const paginationLinks = () =>
     props.attendances.links.filter(
         (link) => getPaginationLabel(link.label) !== '',
     );
+
+const handleAttendanceFile = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    importForm.attendance_file = input.files?.[0] ?? null;
+};
+
+const importAttendance = () => {
+    importForm.post(attendanceImportHref, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            importForm.reset();
+            importForm.clearErrors();
+        },
+    });
+};
 </script>
 
 <template>
@@ -181,6 +215,81 @@ const paginationLinks = () =>
                         Review intern check-ins and check-outs.
                     </p>
                 </div>
+                <Dialog v-if="isAdmin">
+                    <DialogTrigger as-child>
+                        <Button>
+                            <Upload class="mr-2 h-4 w-4" />
+                            Import CSV
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Import Attendance</DialogTitle>
+                            <DialogDescription>
+                                Required columns: date, intern_email,
+                                check_in_time.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form
+                            class="grid gap-4"
+                            @submit.prevent="importAttendance"
+                        >
+                            <div class="grid gap-2">
+                                <Label for="attendance_file">CSV file</Label>
+                                <Input
+                                    id="attendance_file"
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    :class="{
+                                        'border-destructive':
+                                            importForm.errors.attendance_file,
+                                    }"
+                                    @change="handleAttendanceFile"
+                                />
+                                <p
+                                    v-if="importForm.errors.attendance_file"
+                                    class="text-xs text-destructive"
+                                >
+                                    {{ importForm.errors.attendance_file }}
+                                </p>
+                            </div>
+                            <div
+                                class="rounded-md bg-muted p-3 font-mono text-xs"
+                            >
+                                date,intern_email,check_in_time,check_out_time,wifi_ssid,activities
+                            </div>
+                            <DialogFooter>
+                                <Button
+                                    type="submit"
+                                    :disabled="
+                                        importForm.processing ||
+                                        !importForm.attendance_file
+                                    "
+                                >
+                                    {{
+                                        importForm.processing
+                                            ? 'Importing...'
+                                            : 'Import'
+                                    }}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            <div
+                v-if="import_errors.length > 0"
+                class="rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+            >
+                <p class="text-sm font-medium text-destructive">
+                    Import row errors
+                </p>
+                <ul class="mt-2 grid gap-1 text-sm text-destructive">
+                    <li v-for="error in import_errors" :key="error">
+                        {{ error }}
+                    </li>
+                </ul>
             </div>
 
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

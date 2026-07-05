@@ -13,6 +13,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('attendances', [AttendanceController::class, 'index'])
         ->middleware('role:admin,hr,manager,center_director,supervisor')
         ->name('attendances.index');
+    Route::post('attendances/import', [AttendanceController::class, 'import'])
+        ->middleware('role:admin')
+        ->name('attendances.import');
 
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
