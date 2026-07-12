@@ -41,22 +41,30 @@ class InternReportTest extends TestCase
         Carbon::setTestNow('2026-07-25 10:00:00');
         config(['services.openai.api_key' => 'test-key']);
         Http::fake([
-            'api.openai.com/*' => Http::response([
-                'output_text' => json_encode([
-                    'title' => 'B. JUKA Technologies Internship Report',
-                    'sections' => [
-                        [
-                            'heading' => 'Executive Summary',
-                            'body' => 'The intern completed practical training activities based on checkout logs.',
-                            'image_placeholders' => ['Training activity photo'],
+            'api.openai.com/*' => function ($request) {
+                $this->assertStringContainsString(
+                    'Chapter One: Organization Background',
+                    $request->data()['input'][1]['content']
+                );
+
+                return Http::response([
+                    'output_text' => json_encode([
+                        'title' => 'B. JUKA Technologies Internship Report',
+                        'sections' => [
+                            [
+                                'heading' => 'Executive Summary',
+                                'body' => 'The intern completed practical training activities based on checkout logs.',
+                                'image_placeholders' => ['Training activity photo'],
+                            ],
                         ],
-                    ],
-                ]),
-            ]),
+                    ]),
+                ]);
+            },
         ]);
         $user = $this->activeInternUser([
             'start_date' => '2026-06-15',
             'end_date' => '2026-07-24',
+            'report_format_text' => "Cover Page\nChapter One: Organization Background\nChapter Two: Internship Activities",
         ]);
         $attendance = Attendance::factory()->create([
             'intern_id' => $user->intern->id,

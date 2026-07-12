@@ -189,4 +189,25 @@ class BatchInternOnboardingTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_admin_can_update_batch_report_format(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('batches.report-format.update', $batch), [
+                'report_format_text' => "Cover Page\nChapter One: Introduction",
+                'report_format_file' => UploadedFile::fake()->create('format.docx', 128, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            ])
+            ->assertRedirect();
+
+        $batch->refresh();
+
+        $this->assertSame("Cover Page\nChapter One: Introduction", $batch->report_format_text);
+        $this->assertSame('format.docx', $batch->report_format_original_name);
+        Storage::disk('public')->assertExists($batch->report_format_path);
+    }
 }

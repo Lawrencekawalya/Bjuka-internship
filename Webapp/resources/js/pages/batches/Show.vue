@@ -118,6 +118,11 @@ const certificateForm = useForm({
     certificate_file: null as File | null,
 });
 
+const reportFormatForm = useForm({
+    report_format_text: props.batch.report_format_text || '',
+    report_format_file: null as File | null,
+});
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Dashboard',
@@ -207,6 +212,8 @@ const resetInternPasswordUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/password`;
 const internCertificateUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/certificate`;
+const batchReportFormatUrl = (batchId: string) =>
+    `/batches/${batchId}/report-format`;
 const reportGenerationResetUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/report-generation-reset`;
 
@@ -305,6 +312,21 @@ const uploadCertificate = () => {
             },
         },
     );
+};
+
+const handleReportFormatFile = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    reportFormatForm.report_format_file = input.files?.[0] ?? null;
+};
+
+const saveReportFormat = () => {
+    reportFormatForm.patch(batchReportFormatUrl(props.batch.id), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            reportFormatForm.report_format_file = null;
+        },
+    });
 };
 
 const approveReportGenerationReset = (intern: Intern) => {
@@ -531,6 +553,7 @@ const makeTemporaryPassword = () => {
                             'attendance',
                             'analytics',
                             'networks',
+                            'report format',
                         ]"
                         :key="tab"
                         @click="activeTab = tab"
@@ -1443,6 +1466,102 @@ const makeTemporaryPassword = () => {
                                     batch.
                                 </p>
                             </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div v-else-if="activeTab === 'report format'">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Intern Report Format</CardTitle>
+                            <CardDescription>
+                                This format is used when interns in this batch
+                                generate their final report draft.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                class="grid gap-5"
+                                @submit.prevent="saveReportFormat"
+                            >
+                                <div class="grid gap-2">
+                                    <Label for="report_format_text">
+                                        Report format text
+                                    </Label>
+                                    <textarea
+                                        id="report_format_text"
+                                        v-model="
+                                            reportFormatForm.report_format_text
+                                        "
+                                        class="min-h-[320px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        placeholder="Paste the report structure here. Example: Cover Page, Declaration, Chapter One..."
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Paste the required headings,
+                                        instructions, chapter order, and any
+                                        formatting notes. The uploaded file is
+                                        stored for reference only.
+                                    </p>
+                                    <p
+                                        v-if="
+                                            reportFormatForm.errors
+                                                .report_format_text
+                                        "
+                                        class="text-sm text-destructive"
+                                    >
+                                        {{
+                                            reportFormatForm.errors
+                                                .report_format_text
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="report_format_file">
+                                        Reference format file
+                                    </Label>
+                                    <Input
+                                        id="report_format_file"
+                                        type="file"
+                                        accept=".txt,.doc,.docx,.odt,.pdf"
+                                        @change="handleReportFormatFile"
+                                    />
+                                    <p
+                                        v-if="
+                                            batch.report_format_original_name
+                                        "
+                                        class="text-xs text-muted-foreground"
+                                    >
+                                        Current file:
+                                        {{ batch.report_format_original_name }}
+                                    </p>
+                                    <p
+                                        v-if="
+                                            reportFormatForm.errors
+                                                .report_format_file
+                                        "
+                                        class="text-sm text-destructive"
+                                    >
+                                        {{
+                                            reportFormatForm.errors
+                                                .report_format_file
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <Button
+                                        type="submit"
+                                        :disabled="reportFormatForm.processing"
+                                    >
+                                        {{
+                                            reportFormatForm.processing
+                                                ? 'Saving...'
+                                                : 'Save Report Format'
+                                        }}
+                                    </Button>
+                                </div>
+                            </form>
                         </CardContent>
                     </Card>
                 </div>

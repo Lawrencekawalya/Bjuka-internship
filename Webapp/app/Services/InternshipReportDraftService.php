@@ -142,7 +142,7 @@ class InternshipReportDraftService
             ->all();
 
         return [
-            'report_format' => $this->defaultReportFormat(),
+            'report_format' => $this->reportFormatFor($intern),
             'intern' => [
                 'name' => $intern->user?->name,
                 'institution' => $intern->institution,
@@ -157,6 +157,16 @@ class InternshipReportDraftService
             ],
             'daily_logs' => $attendances,
         ];
+    }
+
+    /**
+     * @return array<int, string>|string
+     */
+    private function reportFormatFor(Intern $intern): array|string
+    {
+        $format = trim((string) ($intern->batch?->report_format_text ?? ''));
+
+        return $format !== '' ? $format : $this->defaultReportFormat();
     }
 
     /**

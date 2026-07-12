@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchInternController;
+use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\InternshipBatchController;
 use App\Http\Controllers\ReportGenerationResetController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
+        Route::patch('batches/{batch}/report-format', [BatchReportFormatController::class, 'update'])->name('batches.report-format.update');
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
         Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
             ->name('batches.interns.certificate.store');

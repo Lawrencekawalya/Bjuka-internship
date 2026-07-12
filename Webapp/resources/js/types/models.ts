@@ -12,6 +12,9 @@ export interface InternshipBatch {
     batch_code: string;
     name: string;
     description: string | null;
+    report_format_text?: string | null;
+    report_format_path?: string | null;
+    report_format_original_name?: string | null;
     start_date: string;
     end_date: string;
     capacity: number;
