@@ -190,6 +190,7 @@ class InternshipBatchTest extends TestCase
         $batch = InternshipBatch::factory()->create([
             'start_date' => '2026-06-15',
             'end_date' => '2026-07-15',
+            'expected_working_days' => 10,
         ]);
         $interns = Intern::factory()->count(2)->create([
             'batch_id' => $batch->id,
@@ -220,19 +221,21 @@ class InternshipBatchTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('batches/Show')
                 ->where('stats.attendance_rate', 70)
-                ->where('batch_performance.overview.expected_records', 10)
+                ->where('batch_performance.overview.expected_records', 20)
                 ->where('batch_performance.overview.actual_records', 7)
-                ->where('batch_performance.overview.missing_records', 3)
+                ->where('batch_performance.overview.missing_records', 13)
                 ->where('batch_performance.overview.average_hours_per_attendance', 8)
-                ->where('batch_performance.overview.at_risk_interns', 1)
+                ->where('batch_performance.overview.at_risk_interns', 2)
                 ->has('batch_performance.daily_attendance', 5)
                 ->where('batch_performance.daily_attendance.0.attendance_rate', 100)
                 ->where('batch_performance.daily_attendance.3.attendance_rate', 50)
                 ->where('batch_performance.status_distribution.0.status', AttendanceStatus::PRESENT->value)
                 ->where('batch_performance.status_distribution.0.count', 7)
                 ->has('batch_performance.intern_performance', 2)
-                ->where('batch_performance.intern_performance.0.attendance_rate', 60)
-                ->where('batch_performance.intern_performance.1.attendance_rate', 80)
+                ->where('batch_performance.intern_performance.0.attendance_rate', 30)
+                ->where('batch_performance.intern_performance.0.missed_days', 7)
+                ->where('batch_performance.intern_performance.1.attendance_rate', 40)
+                ->where('batch_performance.intern_performance.1.missed_days', 6)
                 ->has('batch_attendances', 7)
             );
     }

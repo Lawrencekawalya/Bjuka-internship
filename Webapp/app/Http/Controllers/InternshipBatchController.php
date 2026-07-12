@@ -188,7 +188,8 @@ class InternshipBatchController extends Controller
             ->map(fn (Attendance $attendance) => $attendance->intern_id.'|'.$attendance->date?->toDateString())
             ->unique()
             ->count();
-        $expectedRecords = $activeInterns * $elapsedWorkingDays;
+        $expectedWorkingDays = max((int) $batch->expected_working_days, 0);
+        $expectedRecords = $activeInterns * $expectedWorkingDays;
         $averageMinutes = (int) round($attendedAttendances->whereNotNull('work_duration_minutes')->avg('work_duration_minutes') ?? 0);
 
         $dailyAttendance = [];
@@ -230,7 +231,7 @@ class InternshipBatchController extends Controller
             ->all();
 
         $internPerformance = $activeInternsCollection
-            ->map(function ($intern) use ($attendances, $elapsedWorkingDays) {
+            ->map(function ($intern) use ($attendances, $expectedWorkingDays) {
                 $internAttendances = $attendances->where('intern_id', $intern->id);
                 $attendedDays = $internAttendances
                     ->where('status', '!=', AttendanceStatus::ABSENT)
@@ -247,8 +248,8 @@ class InternshipBatchController extends Controller
                     'name' => $intern->user?->name ?? 'Unknown intern',
                     'email' => $intern->user?->email,
                     'attended_days' => $attendedDays,
-                    'missed_days' => max($elapsedWorkingDays - $attendedDays, 0),
-                    'attendance_rate' => $elapsedWorkingDays > 0 ? round(($attendedDays / $elapsedWorkingDays) * 100) : 0,
+                    'missed_days' => max($expectedWorkingDays - $attendedDays, 0),
+                    'attendance_rate' => $expectedWorkingDays > 0 ? round(($attendedDays / $expectedWorkingDays) * 100) : 0,
                     'total_hours' => round($totalMinutes / 60, 1),
                     'last_attended_on' => $internAttendances
                         ->where('status', '!=', AttendanceStatus::ABSENT)
