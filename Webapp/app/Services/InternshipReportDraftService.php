@@ -85,8 +85,8 @@ class InternshipReportDraftService
         ]);
 
         $content = $report->content ?? [];
-        $section->addTitle($content['title'] ?? 'Internship Report Draft', 1);
-        $section->addText('Generated draft for: '.$report->intern->user?->name, ['bold' => true]);
+        $section->addTitle($this->docxText($content['title'] ?? 'Internship Report Draft'), 1);
+        $section->addText($this->docxText('Generated draft for: '.$report->intern->user?->name), ['bold' => true]);
         $section->addText('Review, edit, format, and add your real training images before submission.');
         $section->addTextBreak();
 
@@ -97,20 +97,20 @@ class InternshipReportDraftService
                 array_map('strval', $draftSection['bullet_points'] ?? [])
             ));
 
-            $section->addTitle($heading, 2);
+            $section->addTitle($this->docxText($heading), 2);
             foreach ($paragraphs as $paragraph) {
                 if (trim($paragraph) !== '') {
-                    $section->addText(trim($paragraph));
+                    $section->addText($this->docxText(trim($paragraph)));
                 }
             }
 
             foreach ($bulletPoints as $bulletPoint) {
-                $section->addListItem(trim($bulletPoint), 0);
+                $section->addListItem($this->docxText(trim($bulletPoint)), 0);
             }
 
             foreach (($draftSection['image_placeholders'] ?? []) as $placeholder) {
                 $section->addText(
-                    '[Insert image: '.trim((string) $placeholder).']',
+                    $this->docxText('[Insert image: '.trim((string) $placeholder).']'),
                     ['italic' => true, 'color' => '666666']
                 );
             }
@@ -132,6 +132,11 @@ class InternshipReportDraftService
         IOFactory::createWriter($phpWord, 'Word2007')->save($absolutePath);
 
         return $relativePath;
+    }
+
+    private function docxText(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
     /**

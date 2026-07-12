@@ -57,16 +57,16 @@ class InternReportTest extends TestCase
 
                 return Http::response([
                     'output_text' => json_encode([
-                        'title' => 'B. JUKA Technologies Internship Report',
+                        'title' => 'B. JUKA Technologies & Partners Internship Report',
                         'sections' => [
                             [
-                                'heading' => 'Executive Summary',
+                                'heading' => 'Hardware Repair & Maintenance Fundamentals',
                                 'paragraphs' => [
-                                    'The intern completed practical training activities based on checkout logs.',
-                                    'The report connects daily practical work to professional learning outcomes.',
+                                    'The intern completed practical training activities based on checkout logs and handled Cabling & Network Installation tasks.',
+                                    'The report connects daily practical work to professional learning outcomes with references such as Nesheim, T., Sigernes, T., & Bjørkli.',
                                 ],
-                                'bullet_points' => ['Installed CCTV cameras'],
-                                'image_placeholders' => ['Training activity photo'],
+                                'bullet_points' => ['Installed CCTV cameras & configured remote viewing'],
+                                'image_placeholders' => ['Cabling & installation activity photo'],
                             ],
                         ],
                     ]),
@@ -100,6 +100,18 @@ class InternReportTest extends TestCase
 
         $this->assertSame($response->json('report.id'), $report->id);
         Storage::disk('public')->assertExists($report->docx_path);
+
+        $documentXml = file_get_contents('zip://'.Storage::disk('public')->path($report->docx_path).'#word/document.xml');
+
+        $this->assertIsString($documentXml);
+        $this->assertStringContainsString('Hardware Repair &amp; Maintenance Fundamentals', $documentXml);
+        $this->assertStringContainsString('Cabling &amp; Network Installation', $documentXml);
+
+        libxml_use_internal_errors(true);
+        $parsedXml = simplexml_load_string($documentXml);
+
+        $this->assertNotFalse($parsedXml, collect(libxml_get_errors())->pluck('message')->implode("\n"));
+        libxml_clear_errors();
     }
 
     public function test_intern_can_request_one_reset_after_using_three_attempts(): void

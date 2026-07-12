@@ -103,8 +103,8 @@ class BatchExportController extends Controller
         ]);
 
         $section->addTitle('Batch Performance Report', 1);
-        $section->addText($batch->name, ['bold' => true, 'size' => 14], ['alignment' => Jc::CENTER]);
-        $section->addText($batch->batch_code, ['size' => 11], ['alignment' => Jc::CENTER]);
+        $section->addText($this->docxText($batch->name), ['bold' => true, 'size' => 14], ['alignment' => Jc::CENTER]);
+        $section->addText($this->docxText($batch->batch_code), ['size' => 11], ['alignment' => Jc::CENTER]);
         $section->addTextBreak();
 
         $this->addKeyValueTable($section, [
@@ -150,8 +150,8 @@ class BatchExportController extends Controller
 
         foreach ($rows as $label => $value) {
             $table->addRow();
-            $table->addCell(4200)->addText($label, 'label');
-            $table->addCell(5200)->addText((string) $value);
+            $table->addCell(4200)->addText($this->docxText($label), 'label');
+            $table->addCell(5200)->addText($this->docxText($value));
         }
 
         $section->addTextBreak();
@@ -164,7 +164,7 @@ class BatchExportController extends Controller
 
         $table->addRow();
         foreach ($headers as $header) {
-            $table->addCell(1800)->addText($header, 'label');
+            $table->addCell(1800)->addText($this->docxText($header), 'label');
         }
 
         foreach ($interns as $intern) {
@@ -178,13 +178,13 @@ class BatchExportController extends Controller
             $rate = $expectedWorkingDays > 0 ? round(($attendedDays / $expectedWorkingDays) * 100).'%' : '0%';
 
             $table->addRow();
-            $table->addCell(1800)->addText($intern->user?->name ?? 'Unknown');
-            $table->addCell(2200)->addText($intern->user?->email ?? '-');
-            $table->addCell(900)->addText($rate);
-            $table->addCell(900)->addText((string) $attendedDays);
-            $table->addCell(900)->addText((string) max($expectedWorkingDays - $attendedDays, 0));
-            $table->addCell(900)->addText(round(((int) $internAttendances->sum('work_duration_minutes')) / 60, 1).'h');
-            $table->addCell(2200)->addText($intern->supervisors->pluck('name')->join(', ') ?: 'Unassigned');
+            $table->addCell(1800)->addText($this->docxText($intern->user?->name ?? 'Unknown'));
+            $table->addCell(2200)->addText($this->docxText($intern->user?->email ?? '-'));
+            $table->addCell(900)->addText($this->docxText($rate));
+            $table->addCell(900)->addText($this->docxText($attendedDays));
+            $table->addCell(900)->addText($this->docxText(max($expectedWorkingDays - $attendedDays, 0)));
+            $table->addCell(900)->addText($this->docxText(round(((int) $internAttendances->sum('work_duration_minutes')) / 60, 1).'h'));
+            $table->addCell(2200)->addText($this->docxText($intern->supervisors->pluck('name')->join(', ') ?: 'Unassigned'));
         }
 
         $section->addTextBreak();
@@ -200,10 +200,15 @@ class BatchExportController extends Controller
 
         foreach ($networks as $network) {
             $table->addRow();
-            $table->addCell(3200)->addText($network->name);
-            $table->addCell(3200)->addText($network->ssid);
-            $table->addCell(3200)->addText($network->bssid);
+            $table->addCell(3200)->addText($this->docxText($network->name));
+            $table->addCell(3200)->addText($this->docxText($network->ssid));
+            $table->addCell(3200)->addText($this->docxText($network->bssid));
         }
+    }
+
+    private function docxText(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
     private function safeFilename(InternshipBatch $batch, string $suffix): string
