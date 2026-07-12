@@ -40,7 +40,7 @@ class InternWorkingHoursTest extends TestCase
             ->assertJsonCount(7, 'working_hours.days');
     }
 
-    public function test_existing_batch_working_hours_are_returned_without_overwrite(): void
+    public function test_missing_batch_working_hours_are_backfilled_without_overwrite(): void
     {
         $user = User::factory()->create(['role' => UserRole::INTERN]);
         $batch = InternshipBatch::factory()->create();
@@ -63,7 +63,7 @@ class InternWorkingHoursTest extends TestCase
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/intern/working-hours')
             ->assertOk()
-            ->assertJsonCount(1, 'working_hours.days')
+            ->assertJsonCount(7, 'working_hours.days')
             ->assertJsonPath('working_hours.days.0.start_time', '09:00')
             ->assertJsonPath('working_hours.days.0.notes', 'Adjusted Monday schedule.');
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\BatchExportController;
 use App\Http\Controllers\BatchInternController;
 use App\Http\Controllers\BatchProgramWeekController;
 use App\Http\Controllers\BatchReportFormatController;
+use App\Http\Controllers\BatchWorkingHourController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\InternshipBatchController;
@@ -39,6 +40,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('batches.program-weeks.update');
         Route::delete('batches/{batch}/program-weeks/{programWeek}', [BatchProgramWeekController::class, 'destroy'])
             ->name('batches.program-weeks.destroy');
+        Route::patch('batches/{batch}/working-hours', [BatchWorkingHourController::class, 'update'])
+            ->name('batches.working-hours.update');
         Route::patch('batches/{batch}/report-generation-reset', [ReportGenerationResetController::class, 'resetBatch'])
             ->name('batches.report-generation-reset.update');
         Route::post('batches/{batch}/approved-networks', [BatchApprovedNetworkController::class, 'store'])

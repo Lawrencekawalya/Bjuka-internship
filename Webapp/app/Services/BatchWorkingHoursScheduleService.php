@@ -13,8 +13,10 @@ class BatchWorkingHoursScheduleService
      */
     public function ensureDefaultSchedule(InternshipBatch $batch): Collection
     {
-        if ($batch->workingHours()->count() === 0) {
-            foreach ($this->defaultSchedule() as $workingHour) {
+        $existingDays = $batch->workingHours()->pluck('day_of_week')->all();
+
+        foreach ($this->defaultSchedule() as $workingHour) {
+            if (! in_array($workingHour['day_of_week'], $existingDays, true)) {
                 $batch->workingHours()->create($workingHour);
             }
         }

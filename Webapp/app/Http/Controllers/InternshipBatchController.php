@@ -82,9 +82,13 @@ class InternshipBatchController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(InternshipBatch $batch, InternshipProgramScheduleService $programSchedule)
-    {
+    public function show(
+        InternshipBatch $batch,
+        InternshipProgramScheduleService $programSchedule,
+        BatchWorkingHoursScheduleService $workingHoursSchedule
+    ) {
         $programSchedule->ensureDefaultSchedule($batch);
+        $workingHoursSchedule->ensureDefaultSchedule($batch);
 
         $batch->load([
             'coordinator:id,name',
@@ -93,6 +97,7 @@ class InternshipBatchController extends Controller
             'interns.reportGenerationQuota',
             'approvedNetworks',
             'programWeeks',
+            'workingHours',
         ]);
 
         $activeInterns = $batch->interns()->where('status', InternStatus::ACTIVE)->count();

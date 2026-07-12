@@ -18,6 +18,17 @@ export interface InternshipProgramWeek {
     activities: string;
 }
 
+export interface BatchWorkingHour {
+    id: string;
+    day_of_week: number;
+    is_working_day: boolean;
+    start_time: string | null;
+    end_time: string | null;
+    break_start_time: string | null;
+    break_end_time: string | null;
+    notes: string | null;
+}
+
 export interface InternshipBatch {
     id: string;
     batch_code: string;
@@ -39,6 +50,7 @@ export interface InternshipBatch {
     interns_count?: number;
     approved_networks?: ApprovedNetwork[];
     program_weeks?: InternshipProgramWeek[];
+    working_hours?: BatchWorkingHour[];
     created_at: string;
     updated_at: string;
 }

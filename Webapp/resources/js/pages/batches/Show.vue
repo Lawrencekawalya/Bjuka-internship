@@ -67,6 +67,7 @@ import {
 } from '@/routes/batches';
 import type {
     ApprovedNetwork,
+    BatchWorkingHour,
     InternshipBatch,
     InternshipProgramWeek,
     BatchStats,
@@ -163,6 +164,19 @@ const programWeekForm = useForm({
     objectives: '',
     topics: '',
     activities: '',
+});
+
+const workingHoursForm = useForm({
+    working_hours: (props.batch.working_hours || []).map((day) => ({
+        id: day.id,
+        day_of_week: day.day_of_week,
+        is_working_day: day.is_working_day,
+        start_time: timeInputValue(day.start_time),
+        end_time: timeInputValue(day.end_time),
+        break_start_time: timeInputValue(day.break_start_time),
+        break_end_time: timeInputValue(day.break_end_time),
+        notes: day.notes || '',
+    })),
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -285,6 +299,8 @@ const batchProgramWeeksUrl = (batchId: string) =>
     `/batches/${batchId}/program-weeks`;
 const batchProgramWeekUrl = (batchId: string, weekId: string) =>
     `/batches/${batchId}/program-weeks/${weekId}`;
+const batchWorkingHoursUrl = (batchId: string) =>
+    `/batches/${batchId}/working-hours`;
 
 const closeBatch = () => {
     if (
@@ -375,6 +391,38 @@ const nextProgramWeekNumber = () =>
     Math.max(0, ...(props.batch.program_weeks || []).map((week) => week.week_number)) + 1;
 
 const dateInputValue = (value: string | null) => value?.slice(0, 10) || '';
+
+function timeInputValue(value: string | null): string {
+    if (!value) {
+        return '';
+    }
+
+    return value.slice(0, 5);
+}
+
+const workingHourDayLabel = (day: BatchWorkingHour | { day_of_week: number }) =>
+    [
+        '',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday',
+    ][day.day_of_week] || 'Unknown';
+
+const workingHoursError = computed(
+    () =>
+        (workingHoursForm.errors as Record<string, string>).working_hours ||
+        '',
+);
+
+const saveWorkingHours = () => {
+    workingHoursForm.patch(batchWorkingHoursUrl(props.batch.id), {
+        preserveScroll: true,
+    });
+};
 
 const openAddProgramWeekDialog = () => {
     selectedProgramWeek.value = null;
@@ -807,6 +855,7 @@ const makeTemporaryPassword = () => {
                             'analytics',
                             'networks',
                             'intern program',
+                            'working hours',
                             'report format',
                         ]"
                         :key="tab"
@@ -2607,6 +2656,204 @@ const makeTemporaryPassword = () => {
                             </form>
                         </DialogContent>
                     </Dialog>
+                </div>
+
+                <div v-else-if="activeTab === 'working hours'">
+                    <Card>
+                        <CardHeader>
+                            <div
+                                class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                            >
+                                <div>
+                                    <CardTitle>Working Hours</CardTitle>
+                                    <CardDescription>
+                                        Manage the official company working
+                                        hours shown to interns in the mobile
+                                        app.
+                                    </CardDescription>
+                                </div>
+                                <Button
+                                    v-if="isAdmin"
+                                    size="sm"
+                                    :disabled="workingHoursForm.processing"
+                                    @click="saveWorkingHours"
+                                >
+                                    <Clock class="mr-2 h-4 w-4" />
+                                    {{
+                                        workingHoursForm.processing
+                                            ? 'Saving...'
+                                            : 'Save Working Hours'
+                                    }}
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <form
+                                class="grid gap-4"
+                                @submit.prevent="saveWorkingHours"
+                            >
+                                <p
+                                    v-if="workingHoursError"
+                                    class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                                >
+                                    {{ workingHoursError }}
+                                </p>
+
+                                <div class="overflow-x-auto rounded-lg border">
+                                    <table class="w-full min-w-[980px] text-sm">
+                                        <thead class="bg-muted/40 text-left">
+                                            <tr>
+                                                <th class="px-4 py-3">
+                                                    Day
+                                                </th>
+                                                <th class="w-[140px] px-4 py-3">
+                                                    Working
+                                                </th>
+                                                <th class="w-[130px] px-4 py-3">
+                                                    Start
+                                                </th>
+                                                <th class="w-[130px] px-4 py-3">
+                                                    End
+                                                </th>
+                                                <th class="w-[130px] px-4 py-3">
+                                                    Break Start
+                                                </th>
+                                                <th class="w-[130px] px-4 py-3">
+                                                    Break End
+                                                </th>
+                                                <th class="min-w-[260px] px-4 py-3">
+                                                    Notes
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y">
+                                            <tr
+                                                v-for="day in workingHoursForm.working_hours"
+                                                :key="day.id"
+                                            >
+                                                <td class="px-4 py-3">
+                                                    <div
+                                                        class="font-medium"
+                                                    >
+                                                        {{
+                                                            workingHourDayLabel(
+                                                                day,
+                                                            )
+                                                        }}
+                                                    </div>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <label
+                                                        class="inline-flex items-center gap-2"
+                                                    >
+                                                        <input
+                                                            v-model="
+                                                                day.is_working_day
+                                                            "
+                                                            type="checkbox"
+                                                            class="h-4 w-4 rounded border-input"
+                                                            :disabled="
+                                                                !isAdmin
+                                                            "
+                                                        />
+                                                        <span
+                                                            class="text-muted-foreground"
+                                                        >
+                                                            {{
+                                                                day.is_working_day
+                                                                    ? 'Yes'
+                                                                    : 'No'
+                                                            }}
+                                                        </span>
+                                                    </label>
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <Input
+                                                        v-model="
+                                                            day.start_time
+                                                        "
+                                                        type="time"
+                                                        :disabled="
+                                                            !isAdmin ||
+                                                            !day.is_working_day
+                                                        "
+                                                    />
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <Input
+                                                        v-model="day.end_time"
+                                                        type="time"
+                                                        :disabled="
+                                                            !isAdmin ||
+                                                            !day.is_working_day
+                                                        "
+                                                    />
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <Input
+                                                        v-model="
+                                                            day.break_start_time
+                                                        "
+                                                        type="time"
+                                                        :disabled="
+                                                            !isAdmin ||
+                                                            !day.is_working_day
+                                                        "
+                                                    />
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <Input
+                                                        v-model="
+                                                            day.break_end_time
+                                                        "
+                                                        type="time"
+                                                        :disabled="
+                                                            !isAdmin ||
+                                                            !day.is_working_day
+                                                        "
+                                                    />
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <Input
+                                                        v-model="day.notes"
+                                                        :disabled="!isAdmin"
+                                                        :placeholder="
+                                                            day.is_working_day
+                                                                ? 'Office training day'
+                                                                : 'Weekend or non-working day'
+                                                        "
+                                                    />
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div
+                                    class="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground"
+                                >
+                                    These hours are currently displayed to
+                                    interns in the mobile app. Attendance rules
+                                    can later use the same schedule for late
+                                    check-in, early checkout, and partial-day
+                                    calculations.
+                                </div>
+
+                                <div
+                                    v-if="isAdmin"
+                                    class="flex justify-end"
+                                >
+                                    <Button
+                                        :disabled="
+                                            workingHoursForm.processing
+                                        "
+                                    >
+                                        Save Working Hours
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
                 </div>
 
                 <div v-else-if="activeTab === 'report format'">
