@@ -164,6 +164,7 @@ class _AttendanceDashboardScreenState
                         const SizedBox(height: 16),
                         _AttendanceRateCard(
                           summary: attendanceState.attendanceSummary,
+                          hasCompletedInternship: hasCompletedInternship,
                         ),
                         const SizedBox(height: 16),
                         if (hasCompletedInternship)
@@ -571,14 +572,21 @@ class _BatchProgressCard extends StatelessWidget {
 
 class _AttendanceRateCard extends StatelessWidget {
   final AttendanceSummary summary;
+  final bool hasCompletedInternship;
 
-  const _AttendanceRateCard({required this.summary});
+  const _AttendanceRateCard({
+    required this.summary,
+    required this.hasCompletedInternship,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rate = summary.attendanceRate.clamp(0, 100).toInt();
     final rateColor = _rateColor(rate, theme);
+    final notAttendedDays = (summary.expectedDays - summary.daysAttended)
+        .clamp(0, summary.expectedDays)
+        .toInt();
 
     return Card(
       child: Padding(
@@ -643,8 +651,12 @@ class _AttendanceRateCard extends StatelessWidget {
                   label: '${summary.daysAttended} attended',
                 ),
                 _SummaryPill(
-                  icon: Icons.calendar_month,
-                  label: '${summary.remainingDays} remaining',
+                  icon: hasCompletedInternship
+                      ? Icons.event_busy
+                      : Icons.calendar_month,
+                  label: hasCompletedInternship
+                      ? '$notAttendedDays days not attended'
+                      : '${summary.remainingDays} remaining',
                 ),
               ],
             ),
