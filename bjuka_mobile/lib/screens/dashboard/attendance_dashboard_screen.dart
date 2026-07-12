@@ -126,6 +126,10 @@ class _AttendanceDashboardScreenState
                           percentage: attendanceState.batchProgressPercentage,
                         ),
                         const SizedBox(height: 16),
+                        _AttendanceRateCard(
+                          summary: attendanceState.attendanceSummary,
+                        ),
+                        const SizedBox(height: 16),
                         if (hasCompletedInternship)
                           _InternshipCompletionCard(
                             user: authState.user,
@@ -519,6 +523,138 @@ class _BatchProgressCard extends StatelessWidget {
     }
 
     return 'The batch period is complete.';
+  }
+}
+
+class _AttendanceRateCard extends StatelessWidget {
+  final AttendanceSummary summary;
+
+  const _AttendanceRateCard({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rate = summary.attendanceRate.clamp(0, 100).toInt();
+    final rateColor = _rateColor(rate, theme);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: rateColor.withValues(alpha: 0.12),
+                  child: Icon(Icons.fact_check, color: rateColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Attendance rate',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${summary.daysAttended} of ${summary.expectedDays} expected days',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$rate%',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: rateColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: rate / 100,
+                minHeight: 8,
+                color: rateColor,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _SummaryPill(
+                  icon: Icons.event_available,
+                  label: '${summary.daysAttended} attended',
+                ),
+                _SummaryPill(
+                  icon: Icons.calendar_month,
+                  label: '${summary.remainingDays} remaining',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _rateColor(int rate, ThemeData theme) {
+    if (rate < 60) {
+      return theme.colorScheme.error;
+    }
+
+    if (rate < 80) {
+      return Colors.orange;
+    }
+
+    return Colors.green;
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _SummaryPill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

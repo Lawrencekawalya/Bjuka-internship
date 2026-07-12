@@ -370,7 +370,51 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('can_check_in', true)
             ->assertJsonPath('can_check_out', false)
             ->assertJsonPath('batch_progress_percentage', 77)
+            ->assertJsonPath('attendance_summary.days_attended', 0)
+            ->assertJsonPath('attendance_summary.expected_days', $user->intern->batch->expected_working_days)
+            ->assertJsonPath('attendance_summary.attendance_rate', 0)
             ->assertJsonPath('certificate_download_url', null);
+    }
+
+    public function test_today_endpoint_returns_attendance_rate_summary(): void
+    {
+        Carbon::setTestNow('2026-06-24 10:00:00');
+        $user = $this->activeInternUser();
+        $user->intern->batch->update([
+            'expected_working_days' => 20,
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-20',
+            'status' => AttendanceStatus::PRESENT,
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-21',
+            'status' => AttendanceStatus::LATE,
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-22',
+            'status' => AttendanceStatus::PARTIAL,
+        ]);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-23',
+            'status' => AttendanceStatus::ABSENT,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/attendance/today')
+            ->assertOk()
+            ->assertJsonPath('attendance_summary.days_attended', 3)
+            ->assertJsonPath('attendance_summary.expected_days', 20)
+            ->assertJsonPath('attendance_summary.attendance_rate', 15)
+            ->assertJsonPath('attendance_summary.remaining_days', 17);
     }
 
     public function test_today_endpoint_returns_certificate_download_url_after_completion(): void

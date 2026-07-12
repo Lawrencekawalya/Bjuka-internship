@@ -55,6 +55,7 @@ class AttendanceStateResponse {
   final bool canCheckIn;
   final bool canCheckOut;
   final int batchProgressPercentage;
+  final AttendanceSummary attendanceSummary;
   final String? certificateDownloadUrl;
 
   AttendanceStateResponse({
@@ -62,6 +63,7 @@ class AttendanceStateResponse {
     required this.canCheckIn,
     required this.canCheckOut,
     required this.batchProgressPercentage,
+    required this.attendanceSummary,
     this.certificateDownloadUrl,
   });
 
@@ -75,7 +77,72 @@ class AttendanceStateResponse {
       canCheckIn: json['can_check_in'] == true,
       canCheckOut: json['can_check_out'] == true,
       batchProgressPercentage: _parseInt(json['batch_progress_percentage']),
+      attendanceSummary: AttendanceSummary.fromJson(
+        json['attendance_summary'] is Map<String, dynamic>
+            ? json['attendance_summary'] as Map<String, dynamic>
+            : const <String, dynamic>{},
+      ),
       certificateDownloadUrl: json['certificate_download_url'] as String?,
+    );
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.round();
+    }
+
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+}
+
+class AttendanceSummary {
+  final int daysAttended;
+  final int expectedDays;
+  final int attendanceRate;
+  final int remainingDays;
+
+  const AttendanceSummary({
+    required this.daysAttended,
+    required this.expectedDays,
+    required this.attendanceRate,
+    required this.remainingDays,
+  });
+
+  const AttendanceSummary.empty()
+    : daysAttended = 0,
+      expectedDays = 0,
+      attendanceRate = 0,
+      remainingDays = 0;
+
+  factory AttendanceSummary.fromJson(Map<String, dynamic> json) {
+    return AttendanceSummary(
+      daysAttended: _parseInt(json['days_attended']),
+      expectedDays: _parseInt(json['expected_days']),
+      attendanceRate: _parseInt(json['attendance_rate']).clamp(0, 100).toInt(),
+      remainingDays: _parseInt(json['remaining_days']),
+    );
+  }
+
+  AttendanceSummary recordAttendance() {
+    final nextDaysAttended = daysAttended + 1;
+    final nextRate = expectedDays > 0
+        ? ((nextDaysAttended / expectedDays) * 100)
+              .round()
+              .clamp(0, 100)
+              .toInt()
+        : 0;
+
+    return AttendanceSummary(
+      daysAttended: nextDaysAttended,
+      expectedDays: expectedDays,
+      attendanceRate: nextRate,
+      remainingDays: (expectedDays - nextDaysAttended)
+          .clamp(0, expectedDays)
+          .toInt(),
     );
   }
 

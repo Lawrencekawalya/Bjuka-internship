@@ -12,6 +12,7 @@ class AttendanceState {
   final bool canCheckIn;
   final bool canCheckOut;
   final int batchProgressPercentage;
+  final AttendanceSummary attendanceSummary;
   final String? certificateDownloadUrl;
   final String? errorMessage;
   final String? successMessage;
@@ -22,6 +23,7 @@ class AttendanceState {
     required this.canCheckIn,
     required this.canCheckOut,
     required this.batchProgressPercentage,
+    required this.attendanceSummary,
     this.certificateDownloadUrl,
     this.attendance,
     this.errorMessage,
@@ -35,6 +37,7 @@ class AttendanceState {
       canCheckIn: false,
       canCheckOut: false,
       batchProgressPercentage: 0,
+      attendanceSummary: const AttendanceSummary.empty(),
     );
   }
 
@@ -45,6 +48,7 @@ class AttendanceState {
     bool? canCheckIn,
     bool? canCheckOut,
     int? batchProgressPercentage,
+    AttendanceSummary? attendanceSummary,
     String? certificateDownloadUrl,
     String? errorMessage,
     String? successMessage,
@@ -59,6 +63,7 @@ class AttendanceState {
       canCheckOut: canCheckOut ?? this.canCheckOut,
       batchProgressPercentage:
           batchProgressPercentage ?? this.batchProgressPercentage,
+      attendanceSummary: attendanceSummary ?? this.attendanceSummary,
       certificateDownloadUrl:
           certificateDownloadUrl ?? this.certificateDownloadUrl,
       errorMessage: clearMessages ? null : errorMessage,
@@ -89,6 +94,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         canCheckIn: response.canCheckIn,
         canCheckOut: response.canCheckOut,
         batchProgressPercentage: response.batchProgressPercentage,
+        attendanceSummary: response.attendanceSummary,
         certificateDownloadUrl: response.certificateDownloadUrl,
       );
     } catch (e) {
@@ -115,6 +121,7 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         attendance: attendance,
         canCheckIn: false,
         canCheckOut: attendance.checkOutServerTime == null,
+        attendanceSummary: state.attendanceSummary.recordAttendance(),
         successMessage: 'Checked in successfully.',
       );
     } catch (e) {

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\DailyLearningLog;
+use App\Models\Intern;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,7 @@ class AttendanceController extends Controller
             'can_check_in' => ! $attendance,
             'can_check_out' => $attendance && ! $attendance->check_out_server_time,
             'batch_progress_percentage' => $batchProgressPercentage,
+            'attendance_summary' => $this->attendanceSummaryPayload($intern),
             'certificate_download_url' => $batchProgressPercentage >= 100
                 ? $intern->certificate_url
                 : null,
@@ -262,6 +264,34 @@ class AttendanceController extends Controller
             'wifi_ssid' => $attendance->wifi_ssid,
             'wifi_bssid' => $attendance->wifi_bssid,
             'daily_activities' => $attendance->learningLog?->tasks_completed,
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function attendanceSummaryPayload(Intern $intern): array
+    {
+        $intern->loadMissing('batch');
+
+        $expectedDays = max((int) ($intern->batch?->expected_working_days ?? 0), 0);
+        $daysAttended = Attendance::query()
+            ->where('intern_id', $intern->id)
+            ->whereIn('status', [
+                AttendanceStatus::PRESENT->value,
+                AttendanceStatus::LATE->value,
+                AttendanceStatus::PARTIAL->value,
+            ])
+            ->count();
+        $attendanceRate = $expectedDays > 0
+            ? (int) round(($daysAttended / $expectedDays) * 100)
+            : 0;
+
+        return [
+            'days_attended' => $daysAttended,
+            'expected_days' => $expectedDays,
+            'attendance_rate' => min($attendanceRate, 100),
+            'remaining_days' => max($expectedDays - $daysAttended, 0),
         ];
     }
 }
