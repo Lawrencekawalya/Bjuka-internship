@@ -5,10 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import '../../core/network/wifi_info_service.dart';
 import '../../data/models/attendance_model.dart';
+import '../../data/models/report_model.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/providers.dart';
+import '../../providers/report_provider.dart';
 import '../../theme/bjuka_brand.dart';
 import 'attendance_history_screen.dart';
+import 'intern_program_screen.dart';
 
 class AttendanceDashboardScreen extends ConsumerStatefulWidget {
   const AttendanceDashboardScreen({super.key});
@@ -23,21 +26,40 @@ class _AttendanceDashboardScreenState
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(attendanceStateProvider.notifier).loadToday(),
-    );
+    Future.microtask(() async {
+      await ref.read(attendanceStateProvider.notifier).loadToday();
+      await ref.read(reportStateProvider.notifier).loadStatus();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final attendanceState = ref.watch(attendanceStateProvider);
+    final reportState = ref.watch(reportStateProvider);
     final wifiState = ref.watch(currentWifiProvider);
     final theme = Theme.of(context);
     final hasCompletedInternship =
         attendanceState.batchProgressPercentage >= 100;
 
     ref.listen(attendanceStateProvider, (previous, next) {
+      final message = next.errorMessage ?? next.successMessage;
+      final previousMessage =
+          previous?.errorMessage ?? previous?.successMessage;
+
+      if (message != null && message != previousMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: next.errorMessage == null
+                ? Colors.green
+                : theme.colorScheme.error,
+          ),
+        );
+      }
+    });
+
+    ref.listen(reportStateProvider, (previous, next) {
       final message = next.errorMessage ?? next.successMessage;
       final previousMessage =
           previous?.errorMessage ?? previous?.successMessage;
@@ -82,6 +104,12 @@ class _AttendanceDashboardScreenState
                       builder: (_) => const AttendanceHistoryScreen(),
                     ),
                   );
+                case _MoreMenuAction.program:
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const InternProgramScreen(),
+                    ),
+                  );
                 case _MoreMenuAction.logout:
                   ref.read(authStateProvider.notifier).logout();
               }
@@ -92,6 +120,14 @@ class _AttendanceDashboardScreenState
                 child: ListTile(
                   leading: Icon(Icons.history),
                   title: Text('History'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: _MoreMenuAction.program,
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('Intern Program'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -131,10 +167,16 @@ class _AttendanceDashboardScreenState
                         ),
                         const SizedBox(height: 16),
                         if (hasCompletedInternship)
-                          _InternshipCompletionCard(
-                            user: authState.user,
-                            certificateDownloadUrl:
-                                attendanceState.certificateDownloadUrl,
+                          Column(
+                            children: [
+                              _InternshipCompletionCard(
+                                user: authState.user,
+                                certificateDownloadUrl:
+                                    attendanceState.certificateDownloadUrl,
+                              ),
+                              const SizedBox(height: 16),
+                              _ReportDraftCard(reportState: reportState),
+                            ],
                           )
                         else ...[
                           _StatusCard(attendance: attendanceState.attendance),
@@ -162,6 +204,7 @@ class _AttendanceDashboardScreenState
   Future<void> _refreshAttendanceAndWifi() async {
     ref.invalidate(currentWifiProvider);
     await ref.read(attendanceStateProvider.notifier).loadToday();
+    await ref.read(reportStateProvider.notifier).loadStatus();
   }
 }
 
@@ -219,7 +262,7 @@ class _FullScreenParticlesState extends State<_FullScreenParticles>
   }
 }
 
-enum _MoreMenuAction { history, logout }
+enum _MoreMenuAction { history, program, logout }
 
 class _WelcomeHeader extends StatelessWidget {
   final User? user;
@@ -915,6 +958,287 @@ const MethodChannel _certificateChannel = MethodChannel(
 );
 
 enum _CertificateAction { view, download, share }
+
+class _ReportDraftCard extends ConsumerWidget {
+  final ReportState reportState;
+
+  const _ReportDraftCard({required this.reportState});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final availability = reportState.availability;
+    final quota = availability?.quota;
+    final latestReport = availability?.latestReport;
+    final canGenerate =
+        availability?.available == true &&
+        quota?.canGenerate == true &&
+        !reportState.isGenerating;
+    final canRequestReset =
+        availability?.available == true &&
+        quota?.canRequestReset == true &&
+        !reportState.isRequestingReset;
+
+    if (reportState.isLoading && availability == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Icon(
+                    Icons.description,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Internship report draft',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _quotaLabel(quota),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (latestReport != null) ...[
+              _ReportActionButton(
+                icon: Icons.visibility,
+                label: 'Preview draft',
+                onPressed: () => _showReportPreview(context, latestReport),
+              ),
+              const SizedBox(height: 10),
+              _ReportActionButton(
+                icon: Icons.download,
+                label: 'Download Word document',
+                onPressed: latestReport.downloadUrl == null
+                    ? null
+                    : () => _downloadReport(context, latestReport),
+              ),
+              const SizedBox(height: 12),
+            ],
+            FilledButton.icon(
+              onPressed: canGenerate
+                  ? () => ref.read(reportStateProvider.notifier).generate()
+                  : null,
+              icon: reportState.isGenerating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome),
+              label: Text(
+                reportState.isGenerating
+                    ? 'Generating...'
+                    : 'Generate Internship Report',
+              ),
+            ),
+            if (canRequestReset) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () =>
+                    ref.read(reportStateProvider.notifier).requestReset(),
+                icon: const Icon(Icons.lock_reset),
+                label: const Text('Request reset from admin'),
+              ),
+            ] else if (quota?.resetRequested == true) ...[
+              const SizedBox(height: 10),
+              _ReportNotice(
+                icon: Icons.hourglass_top,
+                text: 'Reset request pending admin approval.',
+              ),
+            ] else if (quota?.permanentlyLocked == true) ...[
+              const SizedBox(height: 10),
+              _ReportNotice(
+                icon: Icons.lock,
+                text: 'Report generation is permanently locked.',
+              ),
+            ] else if (quota != null && !quota.canGenerate) ...[
+              const SizedBox(height: 10),
+              _ReportNotice(
+                icon: Icons.block,
+                text: quota.resetUsed
+                    ? 'Final report generation attempts have been used.'
+                    : 'Generation attempts used. Request a reset from admin.',
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _quotaLabel(ReportQuota? quota) {
+    if (quota == null) {
+      return 'Report generation status unavailable.';
+    }
+
+    return '${quota.remainingGenerations} of ${quota.generationLimit} generations remaining';
+  }
+
+  Future<void> _downloadReport(
+    BuildContext context,
+    GeneratedReport report,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await _certificateChannel.invokeMethod<void>('downloadCertificate', {
+        'url': report.downloadUrl,
+        'fileName': 'BJUKA_Internship_Report_${report.id}.docx',
+      });
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Downloading report document')),
+      );
+    } on PlatformException {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not download the report.')),
+      );
+    }
+  }
+
+  Future<void> _showReportPreview(
+    BuildContext context,
+    GeneratedReport report,
+  ) async {
+    final content = report.content;
+
+    if (content == null) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.82,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return ListView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              children: [
+                Text(
+                  content.title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 16),
+                for (final section in content.sections) ...[
+                  Text(
+                    section.heading,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(section.body),
+                  for (final placeholder in section.imagePlaceholders)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '[Insert image: $placeholder]',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ReportActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+
+  const _ReportActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+      ),
+    );
+  }
+}
+
+class _ReportNotice extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ReportNotice({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _SparkleDot extends StatelessWidget {
   final Animation<double> animation;

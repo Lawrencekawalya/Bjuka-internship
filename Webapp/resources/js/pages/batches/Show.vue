@@ -207,6 +207,8 @@ const resetInternPasswordUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/password`;
 const internCertificateUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/certificate`;
+const reportGenerationResetUrl = (batchId: string, internId: string) =>
+    `/batches/${batchId}/interns/${internId}/report-generation-reset`;
 
 const closeBatch = () => {
     if (
@@ -303,6 +305,18 @@ const uploadCertificate = () => {
             },
         },
     );
+};
+
+const approveReportGenerationReset = (intern: Intern) => {
+    if (
+        confirm(
+            `Reset report generation permissions for ${intern.user?.name || 'this intern'}? This can only be done once.`,
+        )
+    ) {
+        router.patch(reportGenerationResetUrl(props.batch.id, intern.id), {}, {
+            preserveScroll: true,
+        });
+    }
 };
 
 const handleProfilePhoto = (event: Event) => {
@@ -979,6 +993,18 @@ const makeTemporaryPassword = () => {
                                             <Award class="mr-1 h-3 w-3" />
                                             Certificate
                                         </Badge>
+                                        <Badge
+                                            v-if="
+                                                intern.report_generation_quota
+                                                    ?.reset_requested_at &&
+                                                !intern.report_generation_quota
+                                                    ?.reset_used
+                                            "
+                                            variant="secondary"
+                                        >
+                                            <FileText class="mr-1 h-3 w-3" />
+                                            Report reset requested
+                                        </Badge>
                                         <Button
                                             v-if="isAdmin"
                                             variant="outline"
@@ -989,6 +1015,25 @@ const makeTemporaryPassword = () => {
                                         >
                                             <Upload class="mr-2 h-4 w-4" />
                                             Certificate
+                                        </Button>
+                                        <Button
+                                            v-if="
+                                                isAdmin &&
+                                                intern.report_generation_quota
+                                                    ?.reset_requested_at &&
+                                                !intern.report_generation_quota
+                                                    ?.reset_used
+                                            "
+                                            variant="outline"
+                                            size="sm"
+                                            @click="
+                                                approveReportGenerationReset(
+                                                    intern,
+                                                )
+                                            "
+                                        >
+                                            <FileText class="mr-2 h-4 w-4" />
+                                            Reset report generation
                                         </Button>
                                         <Button
                                             v-if="canResetInternPassword"

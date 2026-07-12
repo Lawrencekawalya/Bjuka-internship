@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+        'report_model' => env('OPENAI_REPORT_MODEL', 'gpt-4.1-mini'),
+    ],
+
 ];

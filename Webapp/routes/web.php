@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchInternController;
 use App\Http\Controllers\InternshipBatchController;
+use App\Http\Controllers\ReportGenerationResetController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -22,6 +23,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
         Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
             ->name('batches.interns.certificate.store');
+        Route::patch('batches/{batch}/interns/{intern}/report-generation-reset', [ReportGenerationResetController::class, 'update'])
+            ->name('batches.interns.report-generation-reset.update');
         Route::resource('batches', InternshipBatchController::class)->except(['index', 'show']);
     });
 

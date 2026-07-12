@@ -79,6 +79,7 @@ class InternshipBatchController extends Controller
         $batch->load([
             'coordinator:id,name',
             'interns.user:id,name,email,profile_photo_path,must_change_password',
+            'interns.reportGenerationQuota',
             'approvedNetworks',
         ]);
 

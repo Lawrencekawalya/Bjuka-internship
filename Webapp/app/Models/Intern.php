@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
@@ -56,6 +57,16 @@ class Intern extends Model
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function reportGenerationQuota(): HasOne
+    {
+        return $this->hasOne(InternReportGenerationQuota::class);
+    }
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(InternReport::class);
     }
 
     public function supervisorNotes(): HasMany

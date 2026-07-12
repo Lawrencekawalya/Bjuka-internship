@@ -37,6 +37,14 @@ export interface Intern {
     status: string;
     certificate_path?: string | null;
     certificate_url?: string | null;
+    report_generation_quota?: {
+        generation_count: number;
+        generation_limit: number;
+        reset_requested_at: string | null;
+        reset_approved_at: string | null;
+        reset_used: boolean;
+        permanently_locked_at: string | null;
+    } | null;
     user?: User;
 }
 

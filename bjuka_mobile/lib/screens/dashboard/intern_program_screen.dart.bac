@@ -1,0 +1,352 @@
+import 'package:flutter/material.dart';
+
+class InternProgramScreen extends StatelessWidget {
+  const InternProgramScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Intern Program')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'B. JUKA Technologies Internship Program',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '6 weeks',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _ProgramTable(rows: _programRows),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgramTable extends StatelessWidget {
+  final List<_ProgramRow> rows;
+
+  const _ProgramTable({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final today = DateTime.now();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          headingRowColor: WidgetStatePropertyAll(
+            theme.colorScheme.primaryContainer,
+          ),
+          headingTextStyle: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onPrimaryContainer,
+            fontWeight: FontWeight.w800,
+          ),
+          dataTextStyle: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface,
+          ),
+          headingRowHeight: 44,
+          dataRowMinHeight: 72,
+          dataRowMaxHeight: 310,
+          columnSpacing: 12,
+          dividerThickness: 0.6,
+          horizontalMargin: 12,
+          columns: const [
+            DataColumn(label: SizedBox(width: 140, child: Text('Week'))),
+            DataColumn(label: SizedBox(width: 190, child: Text('Objectives'))),
+            DataColumn(
+              label: SizedBox(width: 205, child: Text('Topics Covered')),
+            ),
+            DataColumn(
+              label: SizedBox(
+                width: 225,
+                child: Text('Practical Activities / Project'),
+              ),
+            ),
+          ],
+          rows: rows
+              .asMap()
+              .entries
+              .map(
+                (entry) => DataRow(
+                  color: WidgetStatePropertyAll(
+                    _rowColor(context, entry.key, entry.value, today),
+                  ),
+                  cells: [
+                    DataCell(
+                      _TableText(
+                        _weekLabel(entry.value, today),
+                        width: 140,
+                        isTitle: true,
+                      ),
+                    ),
+                    DataCell(_TableText(entry.value.objectives, width: 190)),
+                    DataCell(_TableText(entry.value.topics, width: 205)),
+                    DataCell(_TableText(entry.value.activities, width: 225)),
+                  ],
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  Color? _rowColor(
+    BuildContext context,
+    int index,
+    _ProgramRow row,
+    DateTime today,
+  ) {
+    final theme = Theme.of(context);
+
+    if (row.isCurrentWeek(today)) {
+      return theme.colorScheme.tertiaryContainer.withValues(alpha: 0.72);
+    }
+
+    if (index.isOdd) {
+      return theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45);
+    }
+
+    return null;
+  }
+
+  String _weekLabel(_ProgramRow row, DateTime today) {
+    final label = '${row.week}\n[${row.dateRange}]';
+
+    return row.isCurrentWeek(today) ? 'Current week\n$label' : label;
+  }
+}
+
+class _TableText extends StatelessWidget {
+  final String value;
+  final double width;
+  final bool isTitle;
+
+  const _TableText(this.value, {required this.width, this.isTitle = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: width,
+      child: Text(
+        value,
+        softWrap: true,
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontWeight: isTitle ? FontWeight.w700 : FontWeight.w500,
+          height: 1.32,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgramRow {
+  final String week;
+  final String dateRange;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String objectives;
+  final String topics;
+  final String activities;
+
+  _ProgramRow({
+    required this.week,
+    required this.dateRange,
+    required this.startDate,
+    required this.endDate,
+    required this.objectives,
+    required this.topics,
+    required this.activities,
+  });
+
+  bool isCurrentWeek(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final end = DateTime(endDate.year, endDate.month, endDate.day);
+
+    return !day.isBefore(start) && !day.isAfter(end);
+  }
+}
+
+final _programRows = [
+  _ProgramRow(
+    week: 'Week 1 - Hardware Repair & Maintenance Fundamentals',
+    dateRange: '15th to 19th June 2026',
+    startDate: DateTime(2026, 6, 15),
+    endDate: DateTime(2026, 6, 19),
+    objectives:
+        '- Understand computer hardware components\n'
+        '- Learn computer safety procedures\n'
+        '- Perform basic maintenance and troubleshooting',
+    topics:
+        'Computer architecture\n'
+        'Motherboard components\n'
+        'CPU and RAM installation\n'
+        'HDD vs SSD\n'
+        'Power Supply Unit (PSU)\n'
+        'Laptop disassembly\n'
+        'Desktop assembly\n'
+        'BIOS settings\n'
+        'Preventive maintenance\n'
+        'Diagnosing hardware faults',
+    activities:
+        'Assemble/disassemble desktop\n'
+        'Replace RAM, HDD/SSD & PSU\n'
+        'Professional cleaning\n'
+        'Troubleshoot boot failures',
+  ),
+  _ProgramRow(
+    week: 'Week 2 - Cabling & Network Installation',
+    dateRange: '22nd to 26th June 2026',
+    startDate: DateTime(2026, 6, 22),
+    endDate: DateTime(2026, 6, 26),
+    objectives:
+        '- Learn networking basics\n'
+        '- Install/configure small office networks',
+    topics:
+        'Networking fundamentals\n'
+        'LAN vs WAN\n'
+        'IP Addressing\n'
+        'Routers\n'
+        'Switches\n'
+        'Ethernet standards\n'
+        'T568A & T568B\n'
+        'Cable testing\n'
+        'Printer sharing\n'
+        'File sharing\n'
+        'Network troubleshooting',
+    activities:
+        'Terminate Ethernet cables\n'
+        'Test cables\n'
+        'Configure two PCs\n'
+        'Share folders\n'
+        'Share printers\n'
+        'Configure static IPs',
+  ),
+  _ProgramRow(
+    week: 'Week 3 - Desktop Management',
+    dateRange: '29th June 2026 to 03rd July 2026',
+    startDate: DateTime(2026, 6, 29),
+    endDate: DateTime(2026, 7, 3),
+    objectives: 'Learn Windows administration and maintenance',
+    topics:
+        'Windows installation\n'
+        'Driver installation\n'
+        'Windows Updates\n'
+        'User Accounts\n'
+        'Disk Management\n'
+        'Device Manager\n'
+        'Backup & Restore\n'
+        'Antivirus\n'
+        'Software installation\n'
+        'Performance optimization',
+    activities:
+        'Install Windows 11\n'
+        'Install drivers\n'
+        'Partition drive\n'
+        'Install Office\n'
+        'Create users\n'
+        'Optimize startup\n'
+        'Configure Local Users and Groups',
+  ),
+  _ProgramRow(
+    week: 'Week 4 - Frontend Development',
+    dateRange: '06th to 10th July 2026',
+    startDate: DateTime(2026, 7, 6),
+    endDate: DateTime(2026, 7, 10),
+    objectives: 'Learn how websites are built',
+    topics:
+        'HTML5\n'
+        'CSS3\n'
+        'Responsive Design\n'
+        'Flexbox\n'
+        'CSS Grid\n'
+        'JavaScript Basics\n'
+        'DOM Manipulation\n'
+        'Forms\n'
+        'Git Basics',
+    activities:
+        'Build: Personal Portfolio, Business Website, Contact Form, Product Landing Page\n'
+        'Mini Project: B. JUKA Technologies Homepage',
+  ),
+  _ProgramRow(
+    week: 'Week 5 - Backend Development & Introduction to Flutter',
+    dateRange: '13th to 17th July 2026',
+    startDate: DateTime(2026, 7, 13),
+    endDate: DateTime(2026, 7, 17),
+    objectives:
+        'Consolidate backend web development concepts.\n'
+        'Understand the fundamentals of Flutter and cross-platform mobile application development.\n'
+        'Learn Flutter project structure, widgets, and navigation.\n'
+        'Build a simple mobile application using Flutter.',
+    topics:
+        'Backend Development Review\n'
+        '- JavaScript Functions\n'
+        '- CRUD Operations\n'
+        '- Browser Local Storage\n'
+        '- Database Fundamentals\n'
+        '- Web Project Structure\n\n'
+        'Introduction to Flutter\n'
+        '- What is Flutter?\n'
+        '- Installing Flutter & Android Studio\n'
+        '- Flutter Project Structure\n'
+        '- Dart Basics\n'
+        '- Widgets (Stateless & Stateful)\n'
+        '- Layouts (Row, Column, Container)\n'
+        '- Navigation Between Screens\n'
+        '- Forms & User Input',
+    activities:
+        'Build a Login Screen.\n'
+        'Build a Dashboard Screen.\n'
+        'Create a Customer Registration Form.\n'
+        'Implement Navigation Between Pages.\n'
+        'Build a Simple Repair Management Mobile App (UI Only).\n'
+        'Run the application on an Android Emulator or Physical Device.',
+  ),
+  _ProgramRow(
+    week: 'Week 6 - CCTV Camera Installation & Final Project',
+    dateRange: '20th to 24th July 2026',
+    startDate: DateTime(2026, 7, 20),
+    endDate: DateTime(2026, 7, 24),
+    objectives:
+        'Install/configure surveillance systems\n'
+        'Integrate previous learning',
+    topics:
+        'Types of CCTV\n'
+        'DVR vs NVR\n'
+        'Camera Positioning\n'
+        'Cable Routing\n'
+        'Power Supply\n'
+        'IP Cameras\n'
+        'Network Configuration\n'
+        'Remote Viewing\n'
+        'Maintenance\n'
+        'Troubleshooting',
+    activities:
+        'Install 4 cameras\n'
+        'Configure DVR/NVR\n'
+        'Remote viewing\n'
+        'Test recording\n'
+        'Fault diagnosis\n'
+        'Final Project: PC repair, Windows install, LAN setup, frontend website, backend repair system, CCTV installation, presentation',
+  ),
+];

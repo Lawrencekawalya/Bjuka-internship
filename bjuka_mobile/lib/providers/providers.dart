@@ -5,8 +5,10 @@ import '../core/storage/secure_storage_service.dart';
 import '../data/models/attendance_model.dart';
 import '../data/repositories/attendance_repository.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/report_repository.dart';
 import 'attendance_provider.dart';
 import 'auth_provider.dart';
+import 'report_provider.dart';
 
 final secureStorageProvider = Provider((ref) => SecureStorageService());
 
@@ -33,6 +35,11 @@ final attendanceRepositoryProvider = Provider((ref) {
   return AttendanceRepository(dio);
 });
 
+final reportRepositoryProvider = Provider((ref) {
+  final dio = ref.watch(dioProvider);
+  return ReportRepository(dio);
+});
+
 final attendanceHistoryProvider =
     FutureProvider.autoDispose<AttendanceHistoryResponse>((ref) {
       return ref.watch(attendanceRepositoryProvider).getHistory();
@@ -46,3 +53,7 @@ final attendanceStateProvider =
     NotifierProvider<AttendanceNotifier, AttendanceState>(() {
       return AttendanceNotifier();
     });
+
+final reportStateProvider = NotifierProvider<ReportNotifier, ReportState>(() {
+  return ReportNotifier();
+});
