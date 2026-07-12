@@ -94,4 +94,9 @@ class InternshipBatch extends Model
     {
         return $this->hasMany(ApprovedNetwork::class, 'batch_id');
     }
+
+    public function programWeeks(): HasMany
+    {
+        return $this->hasMany(InternshipProgramWeek::class, 'batch_id')->orderBy('week_number');
+    }
 }

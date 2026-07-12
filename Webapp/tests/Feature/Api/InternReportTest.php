@@ -46,6 +46,14 @@ class InternReportTest extends TestCase
                     'Chapter One: Organization Background',
                     $request->data()['input'][1]['content']
                 );
+                $this->assertStringContainsString(
+                    'CCTV Camera Installation & Final Project',
+                    $request->data()['input'][1]['content']
+                );
+                $this->assertStringContainsString(
+                    '"weekly_logs"',
+                    $request->data()['input'][1]['content']
+                );
 
                 return Http::response([
                     'output_text' => json_encode([

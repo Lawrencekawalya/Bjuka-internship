@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\InternReport;
+use App\Models\InternshipProgramWeek;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +16,8 @@ use RuntimeException;
 
 class InternshipReportDraftService
 {
+    public function __construct(private readonly InternshipProgramScheduleService $programSchedule) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -26,7 +29,7 @@ class InternshipReportDraftService
             throw new RuntimeException('OpenAI API key is not configured.');
         }
 
-        $intern->loadMissing(['user', 'batch']);
+        $intern->loadMissing(['user', 'batch.programWeeks']);
         $context = $this->reportContext($intern);
         $response = Http::withToken($apiKey)
             ->timeout(90)
@@ -136,18 +139,45 @@ class InternshipReportDraftService
      */
     private function reportContext(Intern $intern): array
     {
+        $programWeeks = $intern->batch
+            ? $this->programSchedule->ensureDefaultSchedule($intern->batch)
+            : collect();
+
         $attendances = Attendance::query()
             ->with('learningLog')
             ->where('intern_id', $intern->id)
             ->whereNotNull('check_out_server_time')
             ->orderBy('date')
             ->get()
-            ->map(fn (Attendance $attendance) => [
-                'date' => $attendance->date?->toDateString(),
-                'status' => $attendance->status->value,
-                'duration_minutes' => $attendance->work_duration_minutes,
-                'activities' => $attendance->learningLog?->tasks_completed,
-                'challenges' => $attendance->learningLog?->challenges,
+            ->map(function (Attendance $attendance) use ($programWeeks) {
+                $programWeek = $this->programWeekForDate($programWeeks, $attendance);
+
+                return [
+                    'date' => $attendance->date?->toDateString(),
+                    'status' => $attendance->status->value,
+                    'duration_minutes' => $attendance->work_duration_minutes,
+                    'activities' => $attendance->learningLog?->tasks_completed,
+                    'challenges' => $attendance->learningLog?->challenges,
+                    'program_week' => $programWeek ? [
+                        'week_number' => $programWeek->week_number,
+                        'title' => $programWeek->title,
+                    ] : null,
+                ];
+            })
+            ->values();
+
+        $weeklyLogs = $programWeeks
+            ->map(fn (InternshipProgramWeek $week) => [
+                'week_number' => $week->week_number,
+                'title' => $week->title,
+                'date_range' => $week->start_date?->toDateString().' to '.$week->end_date?->toDateString(),
+                'objectives' => $week->objectives,
+                'topics' => $week->topics,
+                'planned_activities' => $week->activities,
+                'intern_logs' => $attendances
+                    ->filter(fn (array $log) => ($log['program_week']['week_number'] ?? null) === $week->week_number)
+                    ->values()
+                    ->all(),
             ])
             ->values()
             ->all();
@@ -157,6 +187,7 @@ class InternshipReportDraftService
             'minimum_depth_requirements' => [
                 'each_major_section' => 'Write 3 to 6 substantial paragraphs unless the section is a title page, table of contents, declaration, dedication, or references.',
                 'weekly_activities' => 'Use all available daily checkout logs. Group related days into weekly or thematic paragraphs and include concrete activities.',
+                'program_alignment' => 'Align daily logs with the official batch intern program weeks. Mention the week title/topics when the logs fall inside that week.',
                 'skills_and_challenges' => 'Explain what was learned, how it was applied, and why it matters professionally.',
                 'image_placeholders' => 'Add 1 to 3 specific image placeholders in practical sections where photos would support the report.',
             ],
@@ -172,8 +203,30 @@ class InternshipReportDraftService
                 'end_date' => $intern->batch?->end_date?->toDateString(),
                 'expected_working_days' => $intern->batch?->expected_working_days,
             ],
-            'daily_logs' => $attendances,
+            'intern_program' => $programWeeks
+                ->map(fn (InternshipProgramWeek $week) => [
+                    'week_number' => $week->week_number,
+                    'title' => $week->title,
+                    'start_date' => $week->start_date?->toDateString(),
+                    'end_date' => $week->end_date?->toDateString(),
+                    'objectives' => $week->objectives,
+                    'topics' => $week->topics,
+                    'activities' => $week->activities,
+                ])
+                ->values()
+                ->all(),
+            'weekly_logs' => $weeklyLogs,
+            'daily_logs' => $attendances->all(),
         ];
+    }
+
+    private function programWeekForDate($programWeeks, Attendance $attendance): ?InternshipProgramWeek
+    {
+        if (! $attendance->date) {
+            return null;
+        }
+
+        return $programWeeks->first(fn (InternshipProgramWeek $week) => $attendance->date->betweenIncluded($week->start_date, $week->end_date));
     }
 
     /**
@@ -221,7 +274,7 @@ Return only valid JSON with this exact shape:
     }
   ]
 }
-Follow the report_format exactly and create every section required by it. Generate a comprehensive editable draft, not a summary. For each major narrative section, write 3 to 6 substantial paragraphs with clear development of ideas, examples from the checkout logs, and professional reflection. Use bullet_points only for lists such as tools, skills, activities, recommendations, or image evidence notes. Use the intern's logs as the factual source. Do not invent exact activities that are not supported by the logs. If logs are limited, expand responsibly by explaining the significance, workflow, learning outcomes, and professional relevance of the logged activities. Include practical image placeholders where evidence photos would strengthen the report.
+Follow the report_format exactly and create every section required by it. Generate a comprehensive editable draft, not a summary. For each major narrative section, write 3 to 6 substantial paragraphs with clear development of ideas, examples from the checkout logs, and professional reflection. Use the intern_program and weekly_logs to connect the intern's daily work to the official batch training roadmap. When writing weekly training activities, mention the relevant week number, week title, planned topics, and how the intern's logged work relates to them. Use bullet_points only for lists such as tools, skills, activities, recommendations, or image evidence notes. Use the intern's logs as the factual source. Do not invent exact completed activities that are not supported by the logs. If logs are limited, expand responsibly by explaining the official program topic, likely learning outcomes, professional relevance, and any clearly logged evidence. Include practical image placeholders where evidence photos would strengthen the report.
 PROMPT;
     }
 

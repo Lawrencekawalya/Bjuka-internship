@@ -10,6 +10,7 @@ use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\InternshipBatch;
 use App\Models\User;
+use App\Services\InternshipProgramScheduleService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Enum;
 use Inertia\Inertia;
@@ -45,7 +46,7 @@ class InternshipBatchController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, InternshipProgramScheduleService $programSchedule)
     {
         $validated = $request->validate([
             'batch_code' => ['required', 'string', 'max:255', 'unique:internship_batches,batch_code'],
@@ -60,6 +61,7 @@ class InternshipBatchController extends Controller
         ]);
 
         $batch = InternshipBatch::create($validated);
+        $programSchedule->ensureDefaultSchedule($batch);
 
         ApprovedNetwork::create([
             'batch_id' => $batch->id,
