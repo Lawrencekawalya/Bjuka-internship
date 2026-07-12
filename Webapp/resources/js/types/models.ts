@@ -76,6 +76,12 @@ export interface BatchPerformanceAnalytics {
         partial: number;
         absent: number;
         attendance_rate: number;
+        interns: {
+            present: string[];
+            late: string[];
+            partial: string[];
+            absent: string[];
+        };
     }[];
     status_distribution: {
         status: string;

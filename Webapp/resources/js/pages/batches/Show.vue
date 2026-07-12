@@ -217,6 +217,18 @@ const formatDuration = (minutes: number | null) => {
     return `${hours}h ${remainingMinutes}m`;
 };
 
+const formatAttendanceTooltip = (
+    label: string,
+    count: number,
+    interns: string[],
+) => {
+    if (count === 0) {
+        return `${label}: 0 interns`;
+    }
+
+    return `${label}: ${count} ${count === 1 ? 'intern' : 'interns'}\n${interns.join('\n')}`;
+};
+
 const closeBatchUrl = (batchId: string) => `/batches/${batchId}/close`;
 const batchInternsUrl = (batchId: string) => `/batches/${batchId}/interns`;
 const resetInternPasswordUrl = (batchId: string, internId: string) =>
@@ -1544,6 +1556,13 @@ const makeTemporaryPassword = () => {
                                         >
                                             <div
                                                 class="bg-emerald-500"
+                                                :title="
+                                                    formatAttendanceTooltip(
+                                                        'Present',
+                                                        day.present,
+                                                        day.interns.present,
+                                                    )
+                                                "
                                                 :style="{
                                                     width:
                                                         (day.present /
@@ -1554,6 +1573,13 @@ const makeTemporaryPassword = () => {
                                             ></div>
                                             <div
                                                 class="bg-amber-500"
+                                                :title="
+                                                    formatAttendanceTooltip(
+                                                        'Late',
+                                                        day.late,
+                                                        day.interns.late,
+                                                    )
+                                                "
                                                 :style="{
                                                     width:
                                                         (day.late /
@@ -1564,6 +1590,13 @@ const makeTemporaryPassword = () => {
                                             ></div>
                                             <div
                                                 class="bg-sky-500"
+                                                :title="
+                                                    formatAttendanceTooltip(
+                                                        'Partial',
+                                                        day.partial,
+                                                        day.interns.partial,
+                                                    )
+                                                "
                                                 :style="{
                                                     width:
                                                         (day.partial /
@@ -1574,6 +1607,13 @@ const makeTemporaryPassword = () => {
                                             ></div>
                                             <div
                                                 class="bg-rose-500"
+                                                :title="
+                                                    formatAttendanceTooltip(
+                                                        'Missed',
+                                                        day.absent,
+                                                        day.interns.absent,
+                                                    )
+                                                "
                                                 :style="{
                                                     width:
                                                         (day.absent /

@@ -205,6 +205,20 @@ class InternshipBatchController extends Controller
                 ->pluck('intern_id')
                 ->unique()
                 ->count();
+            $attendedInternIds = $dayAttendances
+                ->where('status', '!=', AttendanceStatus::ABSENT)
+                ->pluck('intern_id')
+                ->unique();
+            $internNamesById = $activeInternsCollection
+                ->mapWithKeys(fn ($intern) => [$intern->id => $intern->user?->name ?? 'Unknown intern']);
+            $namesForStatus = fn (AttendanceStatus $status) => $dayAttendances
+                ->where('status', $status)
+                ->pluck('intern_id')
+                ->unique()
+                ->map(fn ($internId) => $internNamesById->get($internId))
+                ->filter()
+                ->values()
+                ->all();
 
             $dailyAttendance[] = [
                 'date' => $dateKey,
@@ -214,6 +228,16 @@ class InternshipBatchController extends Controller
                 'partial' => $dayAttendances->where('status', AttendanceStatus::PARTIAL)->pluck('intern_id')->unique()->count(),
                 'absent' => max($activeInterns - $dayActualRecords, 0),
                 'attendance_rate' => $activeInterns > 0 ? round(($dayActualRecords / $activeInterns) * 100) : 0,
+                'interns' => [
+                    'present' => $namesForStatus(AttendanceStatus::PRESENT),
+                    'late' => $namesForStatus(AttendanceStatus::LATE),
+                    'partial' => $namesForStatus(AttendanceStatus::PARTIAL),
+                    'absent' => $activeInternsCollection
+                        ->whereNotIn('id', $attendedInternIds)
+                        ->map(fn ($intern) => $intern->user?->name ?? 'Unknown intern')
+                        ->values()
+                        ->all(),
+                ],
             ];
         }
 
