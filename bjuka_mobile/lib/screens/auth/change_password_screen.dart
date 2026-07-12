@@ -16,6 +16,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   bool _isSubmitting = false;
+  bool _isPasswordVisible = false;
+  bool _isPasswordConfirmationVisible = false;
 
   @override
   void dispose() {
@@ -78,10 +80,23 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     children: [
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: !_isPasswordVisible,
+                        decoration: InputDecoration(
                           labelText: 'New password',
-                          prefixIcon: Icon(Icons.lock_outline),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            tooltip: _isPasswordVisible
+                                ? 'Hide password'
+                                : 'Show password',
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -98,10 +113,24 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: _passwordConfirmationController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: !_isPasswordConfirmationVisible,
+                        decoration: InputDecoration(
                           labelText: 'Confirm password',
-                          prefixIcon: Icon(Icons.lock_reset),
+                          prefixIcon: const Icon(Icons.lock_reset),
+                          suffixIcon: IconButton(
+                            tooltip: _isPasswordConfirmationVisible
+                                ? 'Hide password'
+                                : 'Show password',
+                            icon: Icon(
+                              _isPasswordConfirmationVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordConfirmationVisible =
+                                  !_isPasswordConfirmationVisible,
+                            ),
+                          ),
                         ),
                         validator: (value) {
                           if (value != _passwordController.text) {

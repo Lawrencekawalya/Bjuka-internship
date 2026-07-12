@@ -21,13 +21,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   Timer? _sliderTimer;
   int _activeSlide = 0;
+  bool _isPasswordVisible = false;
 
   static const _slides = [
-    _LoginSlide(imageUrl: 'https://picsum.photos/id/180/900/520', title: 'Build practical tech skills'),
-    _LoginSlide(imageUrl: 'https://picsum.photos/id/201/900/520', title: 'Track daily internship work'),
-    _LoginSlide(imageUrl: 'https://picsum.photos/id/48/900/520', title: 'Learn through real projects'),
-    _LoginSlide(imageUrl: 'https://picsum.photos/id/60/900/520', title: 'Stay connected with supervisors'),
-    _LoginSlide(imageUrl: 'https://picsum.photos/id/119/900/520', title: 'Grow with B. JUKA Technologies'),
+    _LoginSlide(
+      imageUrl: 'https://picsum.photos/id/180/900/520',
+      title: 'Build practical tech skills',
+    ),
+    _LoginSlide(
+      imageUrl: 'https://picsum.photos/id/201/900/520',
+      title: 'Track daily internship work',
+    ),
+    _LoginSlide(
+      imageUrl: 'https://picsum.photos/id/48/900/520',
+      title: 'Learn through real projects',
+    ),
+    _LoginSlide(
+      imageUrl: 'https://picsum.photos/id/60/900/520',
+      title: 'Stay connected with supervisors',
+    ),
+    _LoginSlide(
+      imageUrl: 'https://picsum.photos/id/119/900/520',
+      title: 'Grow with B. JUKA Technologies',
+    ),
   ];
 
   @override
@@ -39,7 +55,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       final nextSlide = (_activeSlide + 1) % _slides.length;
-      _sliderController.animateToPage(nextSlide, duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic);
+      _sliderController.animateToPage(
+        nextSlide,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+      );
     });
   }
 
@@ -55,7 +75,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _login() {
     if (_formKey.currentState!.validate()) {
       final deviceName = Platform.isAndroid ? 'Android Device' : 'iOS Device';
-      ref.read(authStateProvider.notifier).login(_emailController.text, _passwordController.text, deviceName);
+      ref
+          .read(authStateProvider.notifier)
+          .login(_emailController.text, _passwordController.text, deviceName);
     }
   }
 
@@ -78,12 +100,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: 36),
             Text(
               'Intern Sign In',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: BjukaBrand.ink, fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: BjukaBrand.ink,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
               'Access attendance, history, and daily internship records.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 24),
             Card(
@@ -96,20 +123,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       TextFormField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline)),
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter email' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.mail_outline),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Please enter email'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: _passwordController,
-                        decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline)),
-                        obscureText: true,
-                        validator: (value) => value == null || value.isEmpty ? 'Please enter password' : null,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            tooltip: _isPasswordVisible
+                                ? 'Hide password'
+                                : 'Show password',
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
+                          ),
+                        ),
+                        obscureText: !_isPasswordVisible,
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Please enter password'
+                            : null,
                       ),
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,
-                        child: FilledButton.icon(onPressed: _login, icon: const Icon(Icons.login), label: const Text('Login')),
+                        child: FilledButton.icon(
+                          onPressed: _login,
+                          icon: const Icon(Icons.login),
+                          label: const Text('Login'),
+                        ),
                       ),
                     ],
                   ),
@@ -121,12 +175,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: const EdgeInsets.only(top: 16),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.55),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.errorContainer.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Text(authState.errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+                    child: Text(
+                      authState.errorMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -157,7 +218,12 @@ class _LoginImageSlider extends StatelessWidget {
   final int activeSlide;
   final ValueChanged<int> onPageChanged;
 
-  const _LoginImageSlider({required this.controller, required this.slides, required this.activeSlide, required this.onPageChanged});
+  const _LoginImageSlider({
+    required this.controller,
+    required this.slides,
+    required this.activeSlide,
+    required this.onPageChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +249,9 @@ class _LoginImageSlider extends StatelessWidget {
                       errorBuilder: (context, error, stackTrace) {
                         return ColoredBox(
                           color: BjukaBrand.blue.withValues(alpha: 0.1),
-                          child: const Center(child: Icon(Icons.image_not_supported_outlined)),
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported_outlined),
+                          ),
                         );
                       },
                     ),
@@ -192,7 +260,10 @@ class _LoginImageSlider extends StatelessWidget {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, BjukaBrand.ink.withValues(alpha: 0.72)],
+                          colors: [
+                            Colors.transparent,
+                            BjukaBrand.ink.withValues(alpha: 0.72),
+                          ],
                         ),
                       ),
                     ),
@@ -202,7 +273,11 @@ class _LoginImageSlider extends StatelessWidget {
                       bottom: 14,
                       child: Text(
                         slide.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                     ),
                   ],
@@ -223,7 +298,9 @@ class _LoginImageSlider extends StatelessWidget {
               height: 7,
               margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
-                color: isActive ? BjukaBrand.blue : BjukaBrand.blue.withValues(alpha: 0.25),
+                color: isActive
+                    ? BjukaBrand.blue
+                    : BjukaBrand.blue.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(99),
               ),
             );
