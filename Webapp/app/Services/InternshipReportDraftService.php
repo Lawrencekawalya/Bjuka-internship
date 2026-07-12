@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\InternReport;
 use App\Models\InternshipProgramWeek;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -225,7 +226,7 @@ class InternshipReportDraftService
         ];
     }
 
-    private function programWeekForDate($programWeeks, Attendance $attendance): ?InternshipProgramWeek
+    private function programWeekForDate(Collection $programWeeks, Attendance $attendance): ?InternshipProgramWeek
     {
         if (! $attendance->date) {
             return null;

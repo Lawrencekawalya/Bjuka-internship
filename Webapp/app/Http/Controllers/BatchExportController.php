@@ -7,6 +7,7 @@ use App\Enums\InternStatus;
 use App\Models\Attendance;
 use App\Models\InternshipBatch;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\SimpleType\Jc;
 use PhpOffice\PhpWord\Style\Language;
@@ -144,7 +145,7 @@ class BatchExportController extends Controller
             ->deleteFileAfterSend();
     }
 
-    private function addKeyValueTable($section, array $rows): void
+    private function addKeyValueTable(Section $section, array $rows): void
     {
         $table = $section->addTable(['borderSize' => 6, 'borderColor' => 'DDDDDD', 'cellMargin' => 90]);
 
@@ -157,7 +158,7 @@ class BatchExportController extends Controller
         $section->addTextBreak();
     }
 
-    private function addInternPerformanceTable($section, Collection $interns, Collection $attendances, int $expectedWorkingDays): void
+    private function addInternPerformanceTable(Section $section, Collection $interns, Collection $attendances, int $expectedWorkingDays): void
     {
         $table = $section->addTable(['borderSize' => 6, 'borderColor' => 'DDDDDD', 'cellMargin' => 80]);
         $headers = ['Intern', 'Email', 'Rate', 'Attended', 'Missed', 'Hours', 'Supervisors'];
@@ -190,7 +191,7 @@ class BatchExportController extends Controller
         $section->addTextBreak();
     }
 
-    private function addApprovedNetworksTable($section, Collection $networks): void
+    private function addApprovedNetworksTable(Section $section, Collection $networks): void
     {
         $table = $section->addTable(['borderSize' => 6, 'borderColor' => 'DDDDDD', 'cellMargin' => 80]);
         $table->addRow();

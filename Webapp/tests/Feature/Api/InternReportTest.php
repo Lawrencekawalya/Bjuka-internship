@@ -99,9 +99,11 @@ class InternReportTest extends TestCase
         $report = $user->intern->reports()->firstOrFail();
 
         $this->assertSame($response->json('report.id'), $report->id);
-        Storage::disk('public')->assertExists($report->docx_path);
+        $docxPath = Storage::disk('public')->path($report->docx_path);
 
-        $documentXml = file_get_contents('zip://'.Storage::disk('public')->path($report->docx_path).'#word/document.xml');
+        $this->assertFileExists($docxPath);
+
+        $documentXml = file_get_contents('zip://'.$docxPath.'#word/document.xml');
 
         $this->assertIsString($documentXml);
         $this->assertStringContainsString('Hardware Repair &amp; Maintenance Fundamentals', $documentXml);
