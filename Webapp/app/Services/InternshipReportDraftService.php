@@ -89,13 +89,20 @@ class InternshipReportDraftService
 
         foreach (($content['sections'] ?? []) as $draftSection) {
             $heading = (string) ($draftSection['heading'] ?? 'Section');
-            $body = (string) ($draftSection['body'] ?? '');
+            $paragraphs = $this->sectionParagraphs($draftSection);
+            $bulletPoints = array_values(array_filter(
+                array_map('strval', $draftSection['bullet_points'] ?? [])
+            ));
 
             $section->addTitle($heading, 2);
-            foreach (preg_split('/\R+/', trim($body)) ?: [] as $paragraph) {
+            foreach ($paragraphs as $paragraph) {
                 if (trim($paragraph) !== '') {
                     $section->addText(trim($paragraph));
                 }
+            }
+
+            foreach ($bulletPoints as $bulletPoint) {
+                $section->addListItem(trim($bulletPoint), 0);
             }
 
             foreach (($draftSection['image_placeholders'] ?? []) as $placeholder) {
@@ -147,6 +154,12 @@ class InternshipReportDraftService
 
         return [
             'report_format' => $this->reportFormatFor($intern),
+            'minimum_depth_requirements' => [
+                'each_major_section' => 'Write 3 to 6 substantial paragraphs unless the section is a title page, table of contents, declaration, dedication, or references.',
+                'weekly_activities' => 'Use all available daily checkout logs. Group related days into weekly or thematic paragraphs and include concrete activities.',
+                'skills_and_challenges' => 'Explain what was learned, how it was applied, and why it matters professionally.',
+                'image_placeholders' => 'Add 1 to 3 specific image placeholders in practical sections where photos would support the report.',
+            ],
             'intern' => [
                 'name' => $intern->user?->name,
                 'institution' => $intern->institution,
@@ -202,13 +215,29 @@ Return only valid JSON with this exact shape:
   "sections": [
     {
       "heading": "string",
-      "body": "string",
+      "paragraphs": ["string"],
+      "bullet_points": ["string"],
       "image_placeholders": ["string"]
     }
   ]
 }
-Follow the report_format exactly. Use the intern's logs as the factual source. Do not invent exact activities that are not supported by the logs. Use professional student-report language. Include practical image placeholders where evidence photos would strengthen the report.
+Follow the report_format exactly and create every section required by it. Generate a comprehensive editable draft, not a summary. For each major narrative section, write 3 to 6 substantial paragraphs with clear development of ideas, examples from the checkout logs, and professional reflection. Use bullet_points only for lists such as tools, skills, activities, recommendations, or image evidence notes. Use the intern's logs as the factual source. Do not invent exact activities that are not supported by the logs. If logs are limited, expand responsibly by explaining the significance, workflow, learning outcomes, and professional relevance of the logged activities. Include practical image placeholders where evidence photos would strengthen the report.
 PROMPT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $draftSection
+     * @return array<int, string>
+     */
+    private function sectionParagraphs(array $draftSection): array
+    {
+        if (isset($draftSection['paragraphs']) && is_array($draftSection['paragraphs'])) {
+            return array_values(array_filter(array_map('strval', $draftSection['paragraphs'])));
+        }
+
+        $body = (string) ($draftSection['body'] ?? '');
+
+        return array_values(array_filter(preg_split('/\R+/', trim($body)) ?: []));
     }
 
     /**
@@ -254,7 +283,10 @@ PROMPT;
             ->filter(fn ($section) => is_array($section))
             ->map(fn ($section) => [
                 'heading' => trim((string) ($section['heading'] ?? 'Section')),
-                'body' => trim((string) ($section['body'] ?? '')),
+                'paragraphs' => $this->sectionParagraphs($section),
+                'bullet_points' => array_values(array_filter(
+                    array_map('strval', $section['bullet_points'] ?? [])
+                )),
                 'image_placeholders' => array_values(array_filter(
                     array_map('strval', $section['image_placeholders'] ?? [])
                 )),

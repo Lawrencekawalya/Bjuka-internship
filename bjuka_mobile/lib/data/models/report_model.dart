@@ -131,21 +131,36 @@ class ReportContent {
 
 class ReportSection {
   final String heading;
-  final String body;
+  final List<String> paragraphs;
+  final List<String> bulletPoints;
   final List<String> imagePlaceholders;
 
   ReportSection({
     required this.heading,
-    required this.body,
+    required this.paragraphs,
+    required this.bulletPoints,
     required this.imagePlaceholders,
   });
 
   factory ReportSection.fromJson(Map<String, dynamic> json) {
+    final paragraphsJson = json['paragraphs'];
+    final bulletPointsJson = json['bullet_points'];
     final placeholdersJson = json['image_placeholders'];
+    final body = json['body']?.toString() ?? '';
 
     return ReportSection(
       heading: json['heading']?.toString() ?? 'Section',
-      body: json['body']?.toString() ?? '',
+      paragraphs: paragraphsJson is List
+          ? paragraphsJson.map((value) => value.toString()).toList()
+          : body.isEmpty
+          ? []
+          : body
+                .split(RegExp(r'\n+'))
+                .where((paragraph) => paragraph.trim().isNotEmpty)
+                .toList(),
+      bulletPoints: bulletPointsJson is List
+          ? bulletPointsJson.map((value) => value.toString()).toList()
+          : [],
       imagePlaceholders: placeholdersJson is List
           ? placeholdersJson.map((value) => value.toString()).toList()
           : [],

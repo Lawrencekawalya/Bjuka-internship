@@ -1165,7 +1165,21 @@ class _ReportDraftCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(section.body),
+                  for (final paragraph in section.paragraphs) ...[
+                    Text(paragraph),
+                    const SizedBox(height: 8),
+                  ],
+                  for (final bulletPoint in section.bulletPoints)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('- '),
+                          Expanded(child: Text(bulletPoint)),
+                        ],
+                      ),
+                    ),
                   for (final placeholder in section.imagePlaceholders)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),

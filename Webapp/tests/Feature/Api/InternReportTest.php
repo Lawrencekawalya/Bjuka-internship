@@ -53,7 +53,11 @@ class InternReportTest extends TestCase
                         'sections' => [
                             [
                                 'heading' => 'Executive Summary',
-                                'body' => 'The intern completed practical training activities based on checkout logs.',
+                                'paragraphs' => [
+                                    'The intern completed practical training activities based on checkout logs.',
+                                    'The report connects daily practical work to professional learning outcomes.',
+                                ],
+                                'bullet_points' => ['Installed CCTV cameras'],
                                 'image_placeholders' => ['Training activity photo'],
                             ],
                         ],
@@ -148,7 +152,8 @@ class InternReportTest extends TestCase
                     'sections' => [
                         [
                             'heading' => 'Conclusion',
-                            'body' => 'The intern completed the training program.',
+                            'paragraphs' => ['The intern completed the training program.'],
+                            'bullet_points' => [],
                             'image_placeholders' => [],
                         ],
                     ],
