@@ -90,6 +90,7 @@ const activeTab = ref('overview');
 const isAddInternOpen = ref(false);
 const isResetPasswordOpen = ref(false);
 const isCertificateOpen = ref(false);
+const isReportFormatPreviewOpen = ref(false);
 const selectedIntern = ref<Intern | null>(null);
 const selectedCertificateIntern = ref<Intern | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
@@ -327,6 +328,10 @@ const saveReportFormat = () => {
             reportFormatForm.report_format_file = null;
         },
     });
+};
+
+const openReportFormatPreview = () => {
+    isReportFormatPreviewOpen.value = true;
 };
 
 const approveReportGenerationReset = (intern: Intern) => {
@@ -1549,7 +1554,15 @@ const makeTemporaryPassword = () => {
                                     </p>
                                 </div>
 
-                                <div class="flex justify-end">
+                                <div class="flex flex-wrap justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="openReportFormatPreview"
+                                    >
+                                        <FileText class="mr-2 h-4 w-4" />
+                                        Preview Format
+                                    </Button>
                                     <Button
                                         type="submit"
                                         :disabled="reportFormatForm.processing"
@@ -1564,6 +1577,47 @@ const makeTemporaryPassword = () => {
                             </form>
                         </CardContent>
                     </Card>
+
+                    <Dialog v-model:open="isReportFormatPreviewOpen">
+                        <DialogContent class="max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Report Format Preview
+                                </DialogTitle>
+                                <DialogDescription>
+                                    This is the format text the AI will follow
+                                    for interns in this batch.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <div
+                                class="max-h-[65vh] overflow-y-auto rounded-lg border bg-muted/30 p-4"
+                            >
+                                <pre
+                                    v-if="
+                                        reportFormatForm.report_format_text.trim()
+                                    "
+                                    class="whitespace-pre-wrap break-words font-sans text-sm leading-6"
+                                >{{ reportFormatForm.report_format_text }}</pre>
+                                >
+                                <div
+                                    v-else
+                                    class="flex min-h-[180px] items-center justify-center text-sm text-muted-foreground"
+                                >
+                                    No report format text has been entered.
+                                </div>
+                            </div>
+
+                            <DialogFooter>
+                                <Button
+                                    type="button"
+                                    @click="isReportFormatPreviewOpen = false"
+                                >
+                                    Close
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </div>
