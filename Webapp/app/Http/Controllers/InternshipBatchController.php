@@ -77,14 +77,17 @@ class InternshipBatchController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(InternshipBatch $batch)
+    public function show(InternshipBatch $batch, InternshipProgramScheduleService $programSchedule)
     {
+        $programSchedule->ensureDefaultSchedule($batch);
+
         $batch->load([
             'coordinator:id,name',
             'interns.user:id,name,email,profile_photo_path,must_change_password',
             'interns.supervisors' => fn ($query) => $query->select('users.id', 'users.name', 'users.email'),
             'interns.reportGenerationQuota',
             'approvedNetworks',
+            'programWeeks',
         ]);
 
         $activeInterns = $batch->interns()->where('status', InternStatus::ACTIVE)->count();

@@ -7,6 +7,17 @@ export interface ApprovedNetwork {
     bssid: string;
 }
 
+export interface InternshipProgramWeek {
+    id: string;
+    week_number: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    objectives: string;
+    topics: string;
+    activities: string;
+}
+
 export interface InternshipBatch {
     id: string;
     batch_code: string;
@@ -27,6 +38,7 @@ export interface InternshipBatch {
     interns?: Intern[];
     interns_count?: number;
     approved_networks?: ApprovedNetwork[];
+    program_weeks?: InternshipProgramWeek[];
     created_at: string;
     updated_at: string;
 }

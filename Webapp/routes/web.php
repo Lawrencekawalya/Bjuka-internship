@@ -4,6 +4,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchApprovedNetworkController;
 use App\Http\Controllers\BatchExportController;
 use App\Http\Controllers\BatchInternController;
+use App\Http\Controllers\BatchProgramWeekController;
 use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InternshipBatchController;
@@ -29,6 +30,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('batches/{batch}/interns/export', [BatchExportController::class, 'exportInterns'])
             ->name('batches.interns.export');
         Route::patch('batches/{batch}/report-format', [BatchReportFormatController::class, 'update'])->name('batches.report-format.update');
+        Route::post('batches/{batch}/program-weeks', [BatchProgramWeekController::class, 'store'])
+            ->name('batches.program-weeks.store');
+        Route::patch('batches/{batch}/program-weeks/{programWeek}', [BatchProgramWeekController::class, 'update'])
+            ->name('batches.program-weeks.update');
+        Route::delete('batches/{batch}/program-weeks/{programWeek}', [BatchProgramWeekController::class, 'destroy'])
+            ->name('batches.program-weeks.destroy');
         Route::patch('batches/{batch}/report-generation-reset', [ReportGenerationResetController::class, 'resetBatch'])
             ->name('batches.report-generation-reset.update');
         Route::post('batches/{batch}/approved-networks', [BatchApprovedNetworkController::class, 'store'])

@@ -17,6 +17,7 @@ import {
     KeyRound,
     Upload,
     Award,
+    Trash2,
 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +68,7 @@ import {
 import type {
     ApprovedNetwork,
     InternshipBatch,
+    InternshipProgramWeek,
     BatchStats,
     BatchPerformanceAnalytics,
     BreadcrumbItem,
@@ -98,10 +100,12 @@ const isCertificateOpen = ref(false);
 const isReportFormatPreviewOpen = ref(false);
 const isNetworkDialogOpen = ref(false);
 const isSupervisorDialogOpen = ref(false);
+const isProgramWeekDialogOpen = ref(false);
 const selectedIntern = ref<Intern | null>(null);
 const selectedCertificateIntern = ref<Intern | null>(null);
 const selectedSupervisorIntern = ref<Intern | null>(null);
 const selectedNetwork = ref<ApprovedNetwork | null>(null);
+const selectedProgramWeek = ref<InternshipProgramWeek | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 const canResetInternPassword = computed(() =>
     ['admin', 'hr'].includes(String(page.props.auth.user.role)),
@@ -149,6 +153,16 @@ const networkForm = useForm({
 
 const supervisorForm = useForm({
     supervisor_ids: [] as number[],
+});
+
+const programWeekForm = useForm({
+    week_number: (props.batch.program_weeks?.length || 0) + 1,
+    title: '',
+    start_date: '',
+    end_date: '',
+    objectives: '',
+    topics: '',
+    activities: '',
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -267,6 +281,10 @@ const batchApprovedNetworksUrl = (batchId: string) =>
     `/batches/${batchId}/approved-networks`;
 const batchApprovedNetworkUrl = (batchId: string, networkId: string | number) =>
     `/batches/${batchId}/approved-networks/${networkId}`;
+const batchProgramWeeksUrl = (batchId: string) =>
+    `/batches/${batchId}/program-weeks`;
+const batchProgramWeekUrl = (batchId: string, weekId: string) =>
+    `/batches/${batchId}/program-weeks/${weekId}`;
 
 const closeBatch = () => {
     if (
@@ -351,6 +369,64 @@ const saveNetwork = () => {
     }
 
     networkForm.post(batchApprovedNetworksUrl(props.batch.id), options);
+};
+
+const nextProgramWeekNumber = () =>
+    Math.max(0, ...(props.batch.program_weeks || []).map((week) => week.week_number)) + 1;
+
+const dateInputValue = (value: string | null) => value?.slice(0, 10) || '';
+
+const openAddProgramWeekDialog = () => {
+    selectedProgramWeek.value = null;
+    programWeekForm.reset();
+    programWeekForm.week_number = nextProgramWeekNumber();
+    programWeekForm.clearErrors();
+    isProgramWeekDialogOpen.value = true;
+};
+
+const openEditProgramWeekDialog = (week: InternshipProgramWeek) => {
+    selectedProgramWeek.value = week;
+    programWeekForm.week_number = week.week_number;
+    programWeekForm.title = week.title;
+    programWeekForm.start_date = dateInputValue(week.start_date);
+    programWeekForm.end_date = dateInputValue(week.end_date);
+    programWeekForm.objectives = week.objectives;
+    programWeekForm.topics = week.topics;
+    programWeekForm.activities = week.activities;
+    programWeekForm.clearErrors();
+    isProgramWeekDialogOpen.value = true;
+};
+
+const saveProgramWeek = () => {
+    const options = {
+        preserveScroll: true,
+        onSuccess: () => {
+            isProgramWeekDialogOpen.value = false;
+            selectedProgramWeek.value = null;
+            programWeekForm.reset();
+            programWeekForm.week_number = nextProgramWeekNumber();
+            programWeekForm.clearErrors();
+        },
+    };
+
+    if (selectedProgramWeek.value) {
+        programWeekForm.patch(
+            batchProgramWeekUrl(props.batch.id, selectedProgramWeek.value.id),
+            options,
+        );
+
+        return;
+    }
+
+    programWeekForm.post(batchProgramWeeksUrl(props.batch.id), options);
+};
+
+const deleteProgramWeek = (week: InternshipProgramWeek) => {
+    if (confirm(`Remove Week ${week.week_number}: ${week.title}?`)) {
+        router.delete(batchProgramWeekUrl(props.batch.id, week.id), {
+            preserveScroll: true,
+        });
+    }
 };
 
 const openSupervisorDialog = (intern: Intern) => {
@@ -730,6 +806,7 @@ const makeTemporaryPassword = () => {
                             'attendance',
                             'analytics',
                             'networks',
+                            'intern program',
                             'report format',
                         ]"
                         :key="tab"
@@ -2197,6 +2274,333 @@ const makeTemporaryPassword = () => {
                                             selectedNetwork
                                                 ? 'Update Network'
                                                 : 'Add Network'
+                                        }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                <div v-else-if="activeTab === 'intern program'">
+                    <Card>
+                        <CardHeader>
+                            <div
+                                class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+                            >
+                                <div>
+                                    <CardTitle>Intern Program</CardTitle>
+                                    <CardDescription>
+                                        Manage the official weekly roadmap used
+                                        by the mobile app and AI report
+                                        generator.
+                                    </CardDescription>
+                                </div>
+                                <Button
+                                    v-if="isAdmin"
+                                    size="sm"
+                                    @click="openAddProgramWeekDialog"
+                                >
+                                    <Calendar class="mr-2 h-4 w-4" />
+                                    Add Week
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div
+                                v-if="
+                                    batch.program_weeks &&
+                                    batch.program_weeks.length > 0
+                                "
+                                class="grid gap-4"
+                            >
+                                <div
+                                    v-for="week in batch.program_weeks"
+                                    :key="week.id"
+                                    class="rounded-lg border p-4"
+                                >
+                                    <div
+                                        class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+                                    >
+                                        <div class="min-w-0">
+                                            <div
+                                                class="flex flex-wrap items-center gap-2"
+                                            >
+                                                <Badge variant="secondary">
+                                                    Week
+                                                    {{ week.week_number }}
+                                                </Badge>
+                                                <h3
+                                                    class="text-base font-semibold"
+                                                >
+                                                    {{ week.title }}
+                                                </h3>
+                                            </div>
+                                            <p
+                                                class="mt-1 text-sm text-muted-foreground"
+                                            >
+                                                {{
+                                                    formatDate(week.start_date)
+                                                }}
+                                                to
+                                                {{ formatDate(week.end_date) }}
+                                            </p>
+                                        </div>
+                                        <div
+                                            v-if="isAdmin"
+                                            class="flex shrink-0 gap-2"
+                                        >
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                @click="
+                                                    openEditProgramWeekDialog(
+                                                        week,
+                                                    )
+                                                "
+                                            >
+                                                <Settings
+                                                    class="mr-2 h-4 w-4"
+                                                />
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                @click="deleteProgramWeek(week)"
+                                            >
+                                                <Trash2
+                                                    class="mr-2 h-4 w-4"
+                                                />
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="mt-4 grid gap-4 md:grid-cols-3"
+                                    >
+                                        <div>
+                                            <p
+                                                class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                            >
+                                                Objectives
+                                            </p>
+                                            <p
+                                                class="mt-2 whitespace-pre-wrap text-sm"
+                                            >
+                                                {{ week.objectives }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                            >
+                                                Topics
+                                            </p>
+                                            <p
+                                                class="mt-2 whitespace-pre-wrap text-sm"
+                                            >
+                                                {{ week.topics }}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p
+                                                class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                            >
+                                                Practical Activities & Projects
+                                            </p>
+                                            <p
+                                                class="mt-2 whitespace-pre-wrap text-sm"
+                                            >
+                                                {{ week.activities }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div
+                                v-else
+                                class="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-dashed text-center text-muted-foreground"
+                            >
+                                <Calendar class="mb-2 h-8 w-8 opacity-30" />
+                                <p>No intern program weeks configured.</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Dialog v-model:open="isProgramWeekDialogOpen">
+                        <DialogContent class="max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle>
+                                    {{
+                                        selectedProgramWeek
+                                            ? 'Update Program Week'
+                                            : 'Add Program Week'
+                                    }}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    These details appear in the mobile app and
+                                    guide the intern AI report draft.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form
+                                class="grid gap-4 md:grid-cols-2"
+                                @submit.prevent="saveProgramWeek"
+                            >
+                                <div class="grid gap-2">
+                                    <Label for="program_week_number">
+                                        Week number
+                                    </Label>
+                                    <Input
+                                        id="program_week_number"
+                                        v-model.number="
+                                            programWeekForm.week_number
+                                        "
+                                        type="number"
+                                        min="1"
+                                        max="52"
+                                    />
+                                    <p
+                                        v-if="
+                                            programWeekForm.errors.week_number
+                                        "
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{
+                                            programWeekForm.errors.week_number
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="program_title">Title</Label>
+                                    <Input
+                                        id="program_title"
+                                        v-model="programWeekForm.title"
+                                        placeholder="Frontend Development"
+                                    />
+                                    <p
+                                        v-if="programWeekForm.errors.title"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.title }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="program_start_date">
+                                        Start date
+                                    </Label>
+                                    <Input
+                                        id="program_start_date"
+                                        v-model="programWeekForm.start_date"
+                                        type="date"
+                                    />
+                                    <p
+                                        v-if="
+                                            programWeekForm.errors.start_date
+                                        "
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.start_date }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="program_end_date">
+                                        End date
+                                    </Label>
+                                    <Input
+                                        id="program_end_date"
+                                        v-model="programWeekForm.end_date"
+                                        type="date"
+                                    />
+                                    <p
+                                        v-if="programWeekForm.errors.end_date"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.end_date }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2 md:col-span-2">
+                                    <Label for="program_objectives">
+                                        Objectives
+                                    </Label>
+                                    <textarea
+                                        id="program_objectives"
+                                        v-model="programWeekForm.objectives"
+                                        rows="4"
+                                        class="min-h-[110px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                        placeholder="- Understand..."
+                                    ></textarea>
+                                    <p
+                                        v-if="programWeekForm.errors.objectives"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.objectives }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2 md:col-span-2">
+                                    <Label for="program_topics">
+                                        Topics covered
+                                    </Label>
+                                    <textarea
+                                        id="program_topics"
+                                        v-model="programWeekForm.topics"
+                                        rows="5"
+                                        class="min-h-[130px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                        placeholder="HTML5&#10;CSS3&#10;JavaScript Basics"
+                                    ></textarea>
+                                    <p
+                                        v-if="programWeekForm.errors.topics"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.topics }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2 md:col-span-2">
+                                    <Label for="program_activities">
+                                        Practical activities & projects
+                                    </Label>
+                                    <textarea
+                                        id="program_activities"
+                                        v-model="programWeekForm.activities"
+                                        rows="5"
+                                        class="min-h-[130px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                        placeholder="Build a personal portfolio&#10;Create a contact form"
+                                    ></textarea>
+                                    <p
+                                        v-if="programWeekForm.errors.activities"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ programWeekForm.errors.activities }}
+                                    </p>
+                                </div>
+
+                                <DialogFooter class="md:col-span-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="
+                                            isProgramWeekDialogOpen = false
+                                        "
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        :disabled="
+                                            programWeekForm.processing
+                                        "
+                                    >
+                                        {{
+                                            programWeekForm.processing
+                                                ? 'Saving...'
+                                                : 'Save Week'
                                         }}
                                     </Button>
                                 </DialogFooter>

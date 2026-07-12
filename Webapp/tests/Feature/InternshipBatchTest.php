@@ -10,6 +10,7 @@ use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\InternshipBatch;
+use App\Models\InternshipProgramWeek;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -149,6 +150,130 @@ class InternshipBatchTest extends TestCase
             'ssid' => 'UPDATED_WIFI',
             'bssid' => '00:11:22:33:44:55',
         ]);
+    }
+
+    public function test_admin_can_add_program_week_to_batch()
+    {
+        $batch = InternshipBatch::factory()->create();
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('batches.program-weeks.store', $batch), [
+                'week_number' => 7,
+                'title' => 'Advanced Deployment',
+                'start_date' => '2026-07-27',
+                'end_date' => '2026-07-31',
+                'objectives' => 'Learn production deployment practices.',
+                'topics' => "Linux servers\nLaravel queues\nBackups",
+                'activities' => "Deploy Laravel app\nConfigure backups",
+            ]);
+
+        $response->assertRedirect(route('batches.show', $batch));
+        $this->assertDatabaseHas('internship_program_weeks', [
+            'batch_id' => $batch->id,
+            'week_number' => 7,
+            'title' => 'Advanced Deployment',
+            'topics' => "Linux servers\nLaravel queues\nBackups",
+        ]);
+    }
+
+    public function test_admin_can_update_program_week()
+    {
+        $batch = InternshipBatch::factory()->create();
+        $week = InternshipProgramWeek::create([
+            'batch_id' => $batch->id,
+            'week_number' => 1,
+            'title' => 'Old Title',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-19',
+            'objectives' => 'Old objectives',
+            'topics' => 'Old topics',
+            'activities' => 'Old activities',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('batches.program-weeks.update', [$batch, $week]), [
+                'week_number' => 1,
+                'title' => 'Hardware Fundamentals',
+                'start_date' => '2026-06-15',
+                'end_date' => '2026-06-19',
+                'objectives' => 'Understand hardware components.',
+                'topics' => 'Motherboard components',
+                'activities' => 'Assemble a desktop',
+            ]);
+
+        $response->assertRedirect(route('batches.show', $batch));
+        $this->assertDatabaseHas('internship_program_weeks', [
+            'id' => $week->id,
+            'title' => 'Hardware Fundamentals',
+            'activities' => 'Assemble a desktop',
+        ]);
+    }
+
+    public function test_admin_can_remove_program_week()
+    {
+        $batch = InternshipBatch::factory()->create();
+        $week = InternshipProgramWeek::create([
+            'batch_id' => $batch->id,
+            'week_number' => 1,
+            'title' => 'Temporary Week',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-19',
+            'objectives' => 'Temporary objectives',
+            'topics' => 'Temporary topics',
+            'activities' => 'Temporary activities',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->delete(route('batches.program-weeks.destroy', [$batch, $week]))
+            ->assertRedirect(route('batches.show', $batch));
+
+        $this->assertDatabaseMissing('internship_program_weeks', [
+            'id' => $week->id,
+        ]);
+    }
+
+    public function test_non_admin_cannot_manage_program_weeks()
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+        $week = InternshipProgramWeek::create([
+            'batch_id' => $batch->id,
+            'week_number' => 1,
+            'title' => 'Week One',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-19',
+            'objectives' => 'Objectives',
+            'topics' => 'Topics',
+            'activities' => 'Activities',
+        ]);
+
+        $this->actingAs($hr)
+            ->post(route('batches.program-weeks.store', $batch), [
+                'week_number' => 2,
+                'title' => 'Blocked',
+                'start_date' => '2026-06-22',
+                'end_date' => '2026-06-26',
+                'objectives' => 'Blocked',
+                'topics' => 'Blocked',
+                'activities' => 'Blocked',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($hr)
+            ->patch(route('batches.program-weeks.update', [$batch, $week]), [
+                'week_number' => 1,
+                'title' => 'Blocked',
+                'start_date' => '2026-06-15',
+                'end_date' => '2026-06-19',
+                'objectives' => 'Blocked',
+                'topics' => 'Blocked',
+                'activities' => 'Blocked',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($hr)
+            ->delete(route('batches.program-weeks.destroy', [$batch, $week]))
+            ->assertForbidden();
     }
 
     public function test_admin_can_export_batch_interns_csv()
