@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\BatchApprovedNetworkController;
+use App\Http\Controllers\BatchExportController;
 use App\Http\Controllers\BatchInternController;
 use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\DashboardController;
@@ -23,6 +24,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
+        Route::get('batches/{batch}/report', [BatchExportController::class, 'generateReport'])
+            ->name('batches.report');
+        Route::get('batches/{batch}/interns/export', [BatchExportController::class, 'exportInterns'])
+            ->name('batches.interns.export');
         Route::patch('batches/{batch}/report-format', [BatchReportFormatController::class, 'update'])->name('batches.report-format.update');
         Route::patch('batches/{batch}/report-generation-reset', [ReportGenerationResetController::class, 'resetBatch'])
             ->name('batches.report-generation-reset.update');

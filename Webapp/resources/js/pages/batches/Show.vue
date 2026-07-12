@@ -247,6 +247,9 @@ const formatAttendanceTooltip = (
 };
 
 const closeBatchUrl = (batchId: string) => `/batches/${batchId}/close`;
+const batchReportUrl = (batchId: string) => `/batches/${batchId}/report`;
+const batchInternsExportUrl = (batchId: string) =>
+    `/batches/${batchId}/interns/export`;
 const batchInternsUrl = (batchId: string) => `/batches/${batchId}/interns`;
 const resetInternPasswordUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/password`;
@@ -287,6 +290,14 @@ const archiveBatch = () => {
     ) {
         router.delete(destroyBatch.url(props.batch.id));
     }
+};
+
+const downloadBatchReport = () => {
+    window.location.href = batchReportUrl(props.batch.id);
+};
+
+const exportBatchInterns = () => {
+    window.location.href = batchInternsExportUrl(props.batch.id);
 };
 
 const addIntern = () => {
@@ -577,8 +588,16 @@ const makeTemporaryPassword = () => {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem>Generate Report</DropdownMenuItem>
-                            <DropdownMenuItem>Export Interns</DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="downloadBatchReport"
+                            >
+                                Generate Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="exportBatchInterns"
+                            >
+                                Export Interns
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                                 @select.prevent="resetBatchReportGeneration"
                             >

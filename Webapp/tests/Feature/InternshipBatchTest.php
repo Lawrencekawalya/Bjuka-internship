@@ -151,6 +151,68 @@ class InternshipBatchTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_export_batch_interns_csv()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'batch_code' => 'INT-EXPORT',
+        ]);
+        $intern = Intern::factory()->create([
+            'batch_id' => $batch->id,
+            'institution' => 'Kabale University',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('batches.interns.export', $batch));
+
+        $response
+            ->assertOk()
+            ->assertDownload('int-export-interns.csv');
+
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString($intern->user->email, $content);
+        $this->assertStringContainsString('Kabale University', $content);
+    }
+
+    public function test_admin_can_generate_batch_report_document()
+    {
+        $batch = InternshipBatch::factory()->create([
+            'batch_code' => 'INT-REPORT',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-07-23',
+            'expected_working_days' => 30,
+        ]);
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+
+        Attendance::factory()->create([
+            'intern_id' => $intern->id,
+            'date' => '2026-06-15',
+            'status' => AttendanceStatus::PRESENT,
+            'work_duration_minutes' => 480,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('batches.report', $batch));
+
+        $response
+            ->assertOk()
+            ->assertDownload('int-report-batch-report.docx');
+    }
+
+    public function test_non_admin_cannot_export_batch_files()
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+
+        $this->actingAs($hr)
+            ->get(route('batches.interns.export', $batch))
+            ->assertForbidden();
+
+        $this->actingAs($hr)
+            ->get(route('batches.report', $batch))
+            ->assertForbidden();
+    }
+
     public function test_non_admin_cannot_manage_approved_networks()
     {
         $hr = User::factory()->create(['role' => UserRole::HR]);
