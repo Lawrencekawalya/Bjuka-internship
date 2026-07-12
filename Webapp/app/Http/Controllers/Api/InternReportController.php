@@ -53,10 +53,8 @@ class InternReportController extends Controller
             ], 503);
         }
 
-        $report = null;
-
         try {
-            DB::transaction(function () use ($intern, &$report) {
+            $report = DB::transaction(function () use ($intern): InternReport {
                 $quota = InternReportGenerationQuota::query()
                     ->where('intern_id', $intern->id)
                     ->lockForUpdate()
@@ -81,7 +79,7 @@ class InternReportController extends Controller
                     ]);
                 }
 
-                $report = InternReport::create([
+                return InternReport::create([
                     'intern_id' => $intern->id,
                     'status' => 'generating',
                 ]);
@@ -93,22 +91,26 @@ class InternReportController extends Controller
                 'status' => 'ready',
                 'generated_at' => now(),
             ]);
+            $report->refresh();
             $report->update([
-                'docx_path' => $draftService->writeDocx($report->fresh(['intern.user'])),
+                'docx_path' => $draftService->writeDocx($report->load('intern.user')),
             ]);
+            $report->refresh();
         } catch (HttpException $exception) {
             throw $exception;
         } catch (RuntimeException $exception) {
             Log::error('Intern report generation failed.', [
                 'intern_id' => $intern->id,
-                'report_id' => $report?->id,
+                'report_id' => isset($report) ? $report->id : null,
                 'message' => $exception->getMessage(),
             ]);
 
-            $report?->update([
-                'status' => 'failed',
-                'failure_reason' => $exception->getMessage(),
-            ]);
+            if (isset($report)) {
+                $report->update([
+                    'status' => 'failed',
+                    'failure_reason' => $exception->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'message' => $exception->getMessage(),
@@ -116,25 +118,29 @@ class InternReportController extends Controller
         } catch (Throwable $exception) {
             Log::error('Unexpected intern report generation failure.', [
                 'intern_id' => $intern->id,
-                'report_id' => $report?->id,
+                'report_id' => isset($report) ? $report->id : null,
                 'message' => $exception->getMessage(),
                 'exception' => $exception::class,
             ]);
 
-            $report?->update([
-                'status' => 'failed',
-                'failure_reason' => $exception->getMessage(),
-            ]);
+            if (isset($report)) {
+                $report->update([
+                    'status' => 'failed',
+                    'failure_reason' => $exception->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Report draft was generated, but the Word document could not be created. Please contact admin.',
             ], 502);
         }
 
+        $intern->refresh();
+
         return response()->json([
             'message' => 'Internship report draft generated successfully.',
-            'report' => $this->reportPayload($report->fresh()),
-            'quota' => $this->quotaPayload($this->quotaFor($intern->fresh())),
+            'report' => $this->reportPayload($report),
+            'quota' => $this->quotaPayload($this->quotaFor($intern)),
         ], 201);
     }
 
