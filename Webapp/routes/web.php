@@ -22,6 +22,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::patch('batches/{batch}/close', [InternshipBatchController::class, 'close'])->name('batches.close');
         Route::patch('batches/{batch}/report-format', [BatchReportFormatController::class, 'update'])->name('batches.report-format.update');
+        Route::patch('batches/{batch}/report-generation-reset', [ReportGenerationResetController::class, 'resetBatch'])
+            ->name('batches.report-generation-reset.update');
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
         Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
             ->name('batches.interns.certificate.store');

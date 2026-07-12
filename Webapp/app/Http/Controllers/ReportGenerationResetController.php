@@ -8,6 +8,27 @@ use Illuminate\Http\RedirectResponse;
 
 class ReportGenerationResetController extends Controller
 {
+    public function resetBatch(InternshipBatch $batch): RedirectResponse
+    {
+        $batch->load('interns.reportGenerationQuota');
+
+        foreach ($batch->interns as $intern) {
+            $intern->reportGenerationQuota()->updateOrCreate(
+                [],
+                [
+                    'generation_count' => 0,
+                    'generation_limit' => 3,
+                    'reset_requested_at' => null,
+                    'reset_approved_at' => null,
+                    'reset_used' => false,
+                    'permanently_locked_at' => null,
+                ]
+            );
+        }
+
+        return back()->with('success', 'Report generation restrictions reset for all interns in this batch.');
+    }
+
     public function update(InternshipBatch $batch, Intern $intern): RedirectResponse
     {
         abort_if($intern->batch_id !== $batch->id, 404);

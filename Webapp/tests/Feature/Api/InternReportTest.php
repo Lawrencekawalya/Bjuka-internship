@@ -186,6 +186,60 @@ class InternReportTest extends TestCase
             ->assertTooManyRequests();
     }
 
+    public function test_admin_can_reset_report_generation_restrictions_for_all_interns_in_batch(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $otherBatch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+        $lockedIntern = Intern::factory()->create(['batch_id' => $batch->id]);
+        $otherIntern = Intern::factory()->create(['batch_id' => $otherBatch->id]);
+
+        InternReportGenerationQuota::create([
+            'intern_id' => $intern->id,
+            'generation_count' => 3,
+            'generation_limit' => 3,
+            'reset_requested_at' => now(),
+            'reset_used' => true,
+            'permanently_locked_at' => now(),
+        ]);
+        InternReportGenerationQuota::create([
+            'intern_id' => $lockedIntern->id,
+            'generation_count' => 3,
+            'generation_limit' => 3,
+            'reset_used' => true,
+            'permanently_locked_at' => now(),
+        ]);
+        InternReportGenerationQuota::create([
+            'intern_id' => $otherIntern->id,
+            'generation_count' => 3,
+            'generation_limit' => 3,
+            'reset_used' => true,
+            'permanently_locked_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('batches.report-generation-reset.update', $batch))
+            ->assertRedirect();
+
+        foreach ([$intern, $lockedIntern] as $batchIntern) {
+            $quota = $batchIntern->reportGenerationQuota()->firstOrFail();
+
+            $this->assertSame(0, $quota->generation_count);
+            $this->assertSame(3, $quota->generation_limit);
+            $this->assertNull($quota->reset_requested_at);
+            $this->assertNull($quota->reset_approved_at);
+            $this->assertFalse($quota->reset_used);
+            $this->assertNull($quota->permanently_locked_at);
+        }
+
+        $otherQuota = $otherIntern->reportGenerationQuota()->firstOrFail();
+
+        $this->assertSame(3, $otherQuota->generation_count);
+        $this->assertTrue($otherQuota->reset_used);
+        $this->assertNotNull($otherQuota->permanently_locked_at);
+    }
+
     private function activeInternUser(array $batchAttributes): User
     {
         $user = User::factory()->create(['role' => UserRole::INTERN]);

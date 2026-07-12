@@ -215,6 +215,8 @@ const internCertificateUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/certificate`;
 const batchReportFormatUrl = (batchId: string) =>
     `/batches/${batchId}/report-format`;
+const batchReportGenerationResetUrl = (batchId: string) =>
+    `/batches/${batchId}/report-generation-reset`;
 const reportGenerationResetUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/report-generation-reset`;
 
@@ -346,6 +348,18 @@ const approveReportGenerationReset = (intern: Intern) => {
     }
 };
 
+const resetBatchReportGeneration = () => {
+    if (
+        confirm(
+            'Reset report generation restrictions for all interns in this batch? This overrides used attempts, reset history, and permanent locks.',
+        )
+    ) {
+        router.patch(batchReportGenerationResetUrl(props.batch.id), {}, {
+            preserveScroll: true,
+        });
+    }
+};
+
 const handleProfilePhoto = (event: Event) => {
     const input = event.target as HTMLInputElement;
     internForm.profile_photo = input.files?.[0] ?? null;
@@ -431,6 +445,11 @@ const makeTemporaryPassword = () => {
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem>Generate Report</DropdownMenuItem>
                             <DropdownMenuItem>Export Interns</DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="resetBatchReportGeneration"
+                            >
+                                Reset All Report Generations
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 class="text-destructive"
