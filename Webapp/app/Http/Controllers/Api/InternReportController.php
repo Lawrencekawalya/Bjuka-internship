@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 class InternReportController extends Controller
 {
@@ -111,6 +112,22 @@ class InternReportController extends Controller
 
             return response()->json([
                 'message' => $exception->getMessage(),
+            ], 502);
+        } catch (Throwable $exception) {
+            Log::error('Unexpected intern report generation failure.', [
+                'intern_id' => $intern->id,
+                'report_id' => $report?->id,
+                'message' => $exception->getMessage(),
+                'exception' => $exception::class,
+            ]);
+
+            $report?->update([
+                'status' => 'failed',
+                'failure_reason' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => 'Report draft was generated, but the Word document could not be created. Please contact admin.',
             ], 502);
         }
 

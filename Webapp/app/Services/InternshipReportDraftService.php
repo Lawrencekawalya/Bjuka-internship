@@ -64,6 +64,10 @@ class InternshipReportDraftService
 
     public function writeDocx(InternReport $report): string
     {
+        if (! class_exists(PhpWord::class)) {
+            throw new RuntimeException('Word document generator is not installed. Run composer install on the backend server.');
+        }
+
         $report->loadMissing('intern.user');
 
         $phpWord = new PhpWord;
