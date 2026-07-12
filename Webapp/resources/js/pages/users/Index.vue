@@ -55,6 +55,10 @@ interface Props {
     roles: RoleOption[];
 }
 
+defineOptions({
+    layout: [],
+});
+
 const props = defineProps<Props>();
 const page = usePage<{ auth: Auth }>();
 
