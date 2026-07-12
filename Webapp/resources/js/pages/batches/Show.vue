@@ -73,6 +73,7 @@ import type {
     Intern,
     Auth,
     AttendanceRecord,
+    User,
 } from '@/types';
 
 defineOptions({
@@ -84,6 +85,7 @@ interface Props {
     stats: BatchStats;
     batch_attendances: AttendanceRecord[];
     batch_performance: BatchPerformanceAnalytics;
+    supervisors: User[];
 }
 
 const props = defineProps<Props>();
@@ -95,8 +97,10 @@ const isResetPasswordOpen = ref(false);
 const isCertificateOpen = ref(false);
 const isReportFormatPreviewOpen = ref(false);
 const isNetworkDialogOpen = ref(false);
+const isSupervisorDialogOpen = ref(false);
 const selectedIntern = ref<Intern | null>(null);
 const selectedCertificateIntern = ref<Intern | null>(null);
+const selectedSupervisorIntern = ref<Intern | null>(null);
 const selectedNetwork = ref<ApprovedNetwork | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 const canResetInternPassword = computed(() =>
@@ -141,6 +145,10 @@ const networkForm = useForm({
     name: '',
     ssid: '',
     bssid: 'any',
+});
+
+const supervisorForm = useForm({
+    supervisor_ids: [] as number[],
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -244,6 +252,8 @@ const resetInternPasswordUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/password`;
 const internCertificateUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/certificate`;
+const internSupervisorsUrl = (batchId: string, internId: string) =>
+    `/batches/${batchId}/interns/${internId}/supervisors`;
 const batchReportFormatUrl = (batchId: string) =>
     `/batches/${batchId}/report-format`;
 const batchReportGenerationResetUrl = (batchId: string) =>
@@ -330,6 +340,54 @@ const saveNetwork = () => {
     }
 
     networkForm.post(batchApprovedNetworksUrl(props.batch.id), options);
+};
+
+const openSupervisorDialog = (intern: Intern) => {
+    selectedSupervisorIntern.value = intern;
+    supervisorForm.supervisor_ids =
+        intern.supervisors?.map((supervisor) => supervisor.id) || [];
+    supervisorForm.clearErrors();
+    isSupervisorDialogOpen.value = true;
+};
+
+const toggleSupervisor = (supervisorId: number, checked: boolean) => {
+    if (checked) {
+        supervisorForm.supervisor_ids = [
+            ...new Set([...supervisorForm.supervisor_ids, supervisorId]),
+        ];
+
+        return;
+    }
+
+    supervisorForm.supervisor_ids = supervisorForm.supervisor_ids.filter(
+        (id) => id !== supervisorId,
+    );
+};
+
+const toggleSupervisorFromEvent = (supervisorId: number, event: Event) => {
+    toggleSupervisor(
+        supervisorId,
+        (event.target as HTMLInputElement | null)?.checked ?? false,
+    );
+};
+
+const saveSupervisors = () => {
+    if (!selectedSupervisorIntern.value) {
+        return;
+    }
+
+    supervisorForm.patch(
+        internSupervisorsUrl(props.batch.id, selectedSupervisorIntern.value.id),
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                isSupervisorDialogOpen.value = false;
+                selectedSupervisorIntern.value = null;
+                supervisorForm.reset();
+                supervisorForm.clearErrors();
+            },
+        },
+    );
 };
 
 const openResetPasswordDialog = (intern: Intern) => {
@@ -1117,6 +1175,28 @@ const makeTemporaryPassword = () => {
                                             Certificate
                                         </Badge>
                                         <Badge
+                                            v-if="intern.supervisors?.length"
+                                            variant="outline"
+                                            :title="
+                                                intern.supervisors
+                                                    .map(
+                                                        (supervisor) =>
+                                                            supervisor.name,
+                                                    )
+                                                    .join('\n')
+                                            "
+                                        >
+                                            <ShieldCheck class="mr-1 h-3 w-3" />
+                                            {{
+                                                intern.supervisors.length
+                                            }}
+                                            supervisor{{
+                                                intern.supervisors.length === 1
+                                                    ? ''
+                                                    : 's'
+                                            }}
+                                        </Badge>
+                                        <Badge
                                             v-if="
                                                 intern.report_generation_quota
                                                     ?.reset_requested_at &&
@@ -1128,6 +1208,17 @@ const makeTemporaryPassword = () => {
                                             <FileText class="mr-1 h-3 w-3" />
                                             Report reset requested
                                         </Badge>
+                                        <Button
+                                            v-if="isAdmin"
+                                            variant="outline"
+                                            size="sm"
+                                            @click="
+                                                openSupervisorDialog(intern)
+                                            "
+                                        >
+                                            <ShieldCheck class="mr-2 h-4 w-4" />
+                                            Supervisors
+                                        </Button>
                                         <Button
                                             v-if="isAdmin"
                                             variant="outline"
@@ -1181,6 +1272,97 @@ const makeTemporaryPassword = () => {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Dialog v-model:open="isSupervisorDialogOpen">
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Assign Supervisors</DialogTitle>
+                                <DialogDescription>
+                                    Choose the supervisors responsible for
+                                    {{ selectedSupervisorIntern?.user?.name }}.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form
+                                class="grid gap-4"
+                                @submit.prevent="saveSupervisors"
+                            >
+                                <div
+                                    v-if="supervisors.length > 0"
+                                    class="grid max-h-[320px] gap-2 overflow-y-auto pr-1"
+                                >
+                                    <label
+                                        v-for="supervisor in supervisors"
+                                        :key="supervisor.id"
+                                        class="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            class="h-4 w-4 rounded border-border"
+                                            :checked="
+                                                supervisorForm.supervisor_ids.includes(
+                                                    supervisor.id,
+                                                )
+                                            "
+                                            @change="
+                                                toggleSupervisorFromEvent(
+                                                    supervisor.id,
+                                                    $event,
+                                                )
+                                            "
+                                        />
+                                        <span class="min-w-0">
+                                            <span
+                                                class="block truncate text-sm font-medium"
+                                            >
+                                                {{ supervisor.name }}
+                                            </span>
+                                            <span
+                                                class="block truncate text-xs text-muted-foreground"
+                                            >
+                                                {{ supervisor.email }}
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div
+                                    v-else
+                                    class="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground"
+                                >
+                                    No supervisor users are available yet.
+                                </div>
+
+                                <p
+                                    v-if="supervisorForm.errors.supervisor_ids"
+                                    class="text-xs text-destructive"
+                                >
+                                    {{ supervisorForm.errors.supervisor_ids }}
+                                </p>
+
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="isSupervisorDialogOpen = false"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        :disabled="
+                                            supervisorForm.processing ||
+                                            supervisors.length === 0
+                                        "
+                                    >
+                                        {{
+                                            supervisorForm.processing
+                                                ? 'Saving...'
+                                                : 'Save Supervisors'
+                                        }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
 
                     <Dialog v-model:open="isResetPasswordOpen">
                         <DialogContent>

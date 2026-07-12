@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
         Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
             ->name('batches.interns.certificate.store');
+        Route::patch('batches/{batch}/interns/{intern}/supervisors', [BatchInternController::class, 'assignSupervisors'])
+            ->name('batches.interns.supervisors.update');
         Route::patch('batches/{batch}/interns/{intern}/report-generation-reset', [ReportGenerationResetController::class, 'update'])
             ->name('batches.interns.report-generation-reset.update');
         Route::resource('batches', InternshipBatchController::class)->except(['index', 'show']);

@@ -6,6 +6,7 @@ use App\Enums\InternStatus;
 use App\Enums\UserRole;
 use App\Models\Intern;
 use App\Models\InternshipBatch;
+use App\Models\InternSupervisorAssignment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -186,6 +187,73 @@ class BatchInternOnboardingTest extends TestCase
         $this->actingAs($hr)
             ->post(route('batches.interns.certificate.store', [$batch, $intern]), [
                 'certificate_file' => UploadedFile::fake()->create('certificate.pdf', 128, 'application/pdf'),
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_assign_supervisors_to_intern(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+        $firstSupervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+        $secondSupervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+
+        $this->actingAs($admin)
+            ->patch(route('batches.interns.supervisors.update', [$batch, $intern]), [
+                'supervisor_ids' => [$firstSupervisor->id, $secondSupervisor->id],
+            ])
+            ->assertRedirect(route('batches.show', $batch));
+
+        $this->assertDatabaseHas('intern_supervisor_assignments', [
+            'intern_id' => $intern->id,
+            'supervisor_id' => $firstSupervisor->id,
+        ]);
+        $this->assertDatabaseHas('intern_supervisor_assignments', [
+            'intern_id' => $intern->id,
+            'supervisor_id' => $secondSupervisor->id,
+        ]);
+    }
+
+    public function test_assigning_supervisors_replaces_previous_assignments(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::ADMIN]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+        $oldSupervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+        $newSupervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+
+        InternSupervisorAssignment::factory()->create([
+            'intern_id' => $intern->id,
+            'supervisor_id' => $oldSupervisor->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->patch(route('batches.interns.supervisors.update', [$batch, $intern]), [
+                'supervisor_ids' => [$newSupervisor->id],
+            ])
+            ->assertRedirect(route('batches.show', $batch));
+
+        $this->assertDatabaseMissing('intern_supervisor_assignments', [
+            'intern_id' => $intern->id,
+            'supervisor_id' => $oldSupervisor->id,
+        ]);
+        $this->assertDatabaseHas('intern_supervisor_assignments', [
+            'intern_id' => $intern->id,
+            'supervisor_id' => $newSupervisor->id,
+        ]);
+    }
+
+    public function test_non_admin_cannot_assign_supervisors_to_intern(): void
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+        $intern = Intern::factory()->create(['batch_id' => $batch->id]);
+        $supervisor = User::factory()->create(['role' => UserRole::SUPERVISOR]);
+
+        $this->actingAs($hr)
+            ->patch(route('batches.interns.supervisors.update', [$batch, $intern]), [
+                'supervisor_ids' => [$supervisor->id],
             ])
             ->assertForbidden();
     }

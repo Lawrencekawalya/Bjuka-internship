@@ -48,6 +48,7 @@ export interface Intern {
         reset_used: boolean;
         permanently_locked_at: string | null;
     } | null;
+    supervisors?: User[];
     user?: User;
 }
 

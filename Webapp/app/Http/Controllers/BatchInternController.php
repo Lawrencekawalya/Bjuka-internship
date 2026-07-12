@@ -6,6 +6,7 @@ use App\Enums\InternStatus;
 use App\Enums\UserRole;
 use App\Models\Intern;
 use App\Models\InternshipBatch;
+use App\Models\InternSupervisorAssignment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -111,5 +112,34 @@ class BatchInternController extends Controller
         ]);
 
         return redirect()->route('batches.show', $batch);
+    }
+
+    public function assignSupervisors(Request $request, InternshipBatch $batch, Intern $intern): RedirectResponse
+    {
+        abort_unless($intern->batch_id === $batch->id, 404);
+
+        $validated = $request->validate([
+            'supervisor_ids' => ['array'],
+            'supervisor_ids.*' => [
+                'integer',
+                Rule::exists('users', 'id')->where('role', UserRole::SUPERVISOR->value),
+            ],
+        ]);
+
+        DB::transaction(function () use ($intern, $validated): void {
+            $intern->supervisorAssignments()->delete();
+
+            foreach (($validated['supervisor_ids'] ?? []) as $supervisorId) {
+                InternSupervisorAssignment::create([
+                    'intern_id' => $intern->id,
+                    'supervisor_id' => $supervisorId,
+                    'assigned_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('batches.show', $batch)
+            ->with('success', 'Intern supervisors updated successfully.');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\AttendanceStatus;
 use App\Enums\BatchStatus;
 use App\Enums\InternStatus;
+use App\Enums\UserRole;
 use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\InternshipBatch;
@@ -79,6 +80,7 @@ class InternshipBatchController extends Controller
         $batch->load([
             'coordinator:id,name',
             'interns.user:id,name,email,profile_photo_path,must_change_password',
+            'interns.supervisors' => fn ($query) => $query->select('users.id', 'users.name', 'users.email'),
             'interns.reportGenerationQuota',
             'approvedNetworks',
         ]);
@@ -144,6 +146,10 @@ class InternshipBatchController extends Controller
             'stats' => $stats,
             'batch_attendances' => $batchAttendances,
             'batch_performance' => $this->batchPerformance($batch, $elapsedWorkingDays, $activeInterns),
+            'supervisors' => User::query()
+                ->where('role', UserRole::SUPERVISOR)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email']),
         ]);
     }
 
