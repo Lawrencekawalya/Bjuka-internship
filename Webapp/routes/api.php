@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InternProgramController;
 use App\Http\Controllers\Api\InternReportController;
+use App\Http\Controllers\Api\InternWorkingHoursController;
 use Illuminate\Support\Facades\Route;
 
 // Public Routes
@@ -17,6 +18,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/attendance/today', [AttendanceController::class, 'today']);
     Route::get('/attendance/history', [AttendanceController::class, 'history']);
     Route::get('/intern/program', [InternProgramController::class, 'show']);
+    Route::get('/intern/working-hours', [InternWorkingHoursController::class, 'show']);
     Route::post('/attendance/check-in', [AttendanceController::class, 'checkIn']);
     Route::post('/attendance/check-out', [AttendanceController::class, 'checkOut']);
     Route::get('/intern/report/status', [InternReportController::class, 'status']);

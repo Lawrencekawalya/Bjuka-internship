@@ -12,6 +12,7 @@ import '../../providers/report_provider.dart';
 import '../../theme/bjuka_brand.dart';
 import 'attendance_history_screen.dart';
 import 'intern_program_screen.dart';
+import 'working_hours_screen.dart';
 
 class AttendanceDashboardScreen extends ConsumerStatefulWidget {
   const AttendanceDashboardScreen({super.key});
@@ -110,6 +111,12 @@ class _AttendanceDashboardScreenState
                       builder: (_) => const InternProgramScreen(),
                     ),
                   );
+                case _MoreMenuAction.workingHours:
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const WorkingHoursScreen(),
+                    ),
+                  );
                 case _MoreMenuAction.logout:
                   ref.read(authStateProvider.notifier).logout();
               }
@@ -128,6 +135,14 @@ class _AttendanceDashboardScreenState
                 child: ListTile(
                   leading: Icon(Icons.school),
                   title: Text('Intern Program'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: _MoreMenuAction.workingHours,
+                child: ListTile(
+                  leading: Icon(Icons.schedule),
+                  title: Text('Working Hours'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -271,7 +286,7 @@ class _FullScreenParticlesState extends State<_FullScreenParticles>
   }
 }
 
-enum _MoreMenuAction { history, program, logout }
+enum _MoreMenuAction { history, program, workingHours, logout }
 
 class _WelcomeHeader extends StatelessWidget {
   final User? user;

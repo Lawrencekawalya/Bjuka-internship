@@ -99,4 +99,9 @@ class InternshipBatch extends Model
     {
         return $this->hasMany(InternshipProgramWeek::class, 'batch_id')->orderBy('week_number');
     }
+
+    public function workingHours(): HasMany
+    {
+        return $this->hasMany(BatchWorkingHour::class, 'batch_id')->orderBy('day_of_week');
+    }
 }

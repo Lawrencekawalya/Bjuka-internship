@@ -7,6 +7,7 @@ import '../data/repositories/attendance_repository.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/intern_program_repository.dart';
 import '../data/repositories/report_repository.dart';
+import '../data/repositories/working_hours_repository.dart';
 import 'attendance_provider.dart';
 import 'auth_provider.dart';
 import 'report_provider.dart';
@@ -46,8 +47,17 @@ final internProgramRepositoryProvider = Provider((ref) {
   return InternProgramRepository(dio);
 });
 
+final workingHoursRepositoryProvider = Provider((ref) {
+  final dio = ref.watch(dioProvider);
+  return WorkingHoursRepository(dio);
+});
+
 final internProgramProvider = FutureProvider.autoDispose((ref) {
   return ref.watch(internProgramRepositoryProvider).getProgram();
+});
+
+final workingHoursProvider = FutureProvider.autoDispose((ref) {
+  return ref.watch(workingHoursRepositoryProvider).getWorkingHours();
 });
 
 final attendanceHistoryProvider =
