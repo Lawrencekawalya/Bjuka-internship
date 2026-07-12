@@ -167,6 +167,14 @@ class _AttendanceDashboardScreenState
                           hasCompletedInternship: hasCompletedInternship,
                         ),
                         const SizedBox(height: 16),
+                        if (attendanceState.attendanceUnavailableMessage !=
+                            null) ...[
+                          _AttendanceUnavailableCard(
+                            message:
+                                attendanceState.attendanceUnavailableMessage!,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         if (hasCompletedInternship)
                           Column(
                             children: [
@@ -1440,6 +1448,55 @@ class _StatusCard extends StatelessWidget {
     }
 
     return 'Your attendance for today is complete.';
+  }
+}
+
+class _AttendanceUnavailableCard extends StatelessWidget {
+  final String message;
+
+  const _AttendanceUnavailableCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.45),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.lock_clock_outlined,
+              color: theme.colorScheme.onSecondaryContainer,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Attendance unavailable',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AttendanceStatus;
+use App\Enums\BatchStatus;
 use App\Enums\InternStatus;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovedNetwork;
@@ -31,11 +32,15 @@ class AttendanceController extends Controller
         $attendance = $this->todayAttendance($intern->id);
 
         $batchProgressPercentage = $intern->batch?->progress_percentage ?? 0;
+        $attendanceUnavailableMessage = $this->attendanceUnavailableMessage($intern);
+        $attendanceAvailable = $attendanceUnavailableMessage === null;
 
         return response()->json([
             'attendance' => $attendance ? $this->attendancePayload($attendance) : null,
-            'can_check_in' => ! $attendance,
-            'can_check_out' => $attendance && ! $attendance->check_out_server_time,
+            'can_check_in' => $attendanceAvailable && ! $attendance,
+            'can_check_out' => $attendanceAvailable && $attendance && ! $attendance->check_out_server_time,
+            'attendance_unavailable_message' => $attendanceUnavailableMessage,
+            'batch_status' => $intern->batch?->status?->value,
             'batch_progress_percentage' => $batchProgressPercentage,
             'attendance_summary' => $this->attendanceSummaryPayload($intern),
             'certificate_download_url' => $batchProgressPercentage >= 100
@@ -82,6 +87,12 @@ class AttendanceController extends Controller
         if (! $intern || $intern->status !== InternStatus::ACTIVE) {
             return response()->json([
                 'message' => 'Active intern profile required.',
+            ], 403);
+        }
+
+        if ($message = $this->attendanceUnavailableMessage($intern->loadMissing('batch'))) {
+            return response()->json([
+                'message' => $message,
             ], 403);
         }
 
@@ -136,6 +147,12 @@ class AttendanceController extends Controller
             ], 403);
         }
 
+        if ($message = $this->attendanceUnavailableMessage($intern->loadMissing('batch'))) {
+            return response()->json([
+                'message' => $message,
+            ], 403);
+        }
+
         $attendance = $this->todayAttendance($intern->id);
 
         if (! $attendance) {
@@ -186,6 +203,21 @@ class AttendanceController extends Controller
             ->with('learningLog')
             ->whereDate('date', today())
             ->first();
+    }
+
+    private function attendanceUnavailableMessage(Intern $intern): ?string
+    {
+        $intern->loadMissing('batch');
+
+        if (! $intern->batch) {
+            return 'Attendance is not available because your internship batch is not assigned.';
+        }
+
+        if (in_array($intern->batch->status, [BatchStatus::CLOSED, BatchStatus::ARCHIVED], true)) {
+            return 'This internship batch is closed. Attendance is no longer available.';
+        }
+
+        return null;
     }
 
     /**

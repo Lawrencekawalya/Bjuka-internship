@@ -11,6 +11,8 @@ class AttendanceState {
   final Attendance? attendance;
   final bool canCheckIn;
   final bool canCheckOut;
+  final String? batchStatus;
+  final String? attendanceUnavailableMessage;
   final int batchProgressPercentage;
   final AttendanceSummary attendanceSummary;
   final String? certificateDownloadUrl;
@@ -24,6 +26,8 @@ class AttendanceState {
     required this.canCheckOut,
     required this.batchProgressPercentage,
     required this.attendanceSummary,
+    this.batchStatus,
+    this.attendanceUnavailableMessage,
     this.certificateDownloadUrl,
     this.attendance,
     this.errorMessage,
@@ -48,12 +52,15 @@ class AttendanceState {
     bool? canCheckIn,
     bool? canCheckOut,
     int? batchProgressPercentage,
+    String? batchStatus,
+    String? attendanceUnavailableMessage,
     AttendanceSummary? attendanceSummary,
     String? certificateDownloadUrl,
     String? errorMessage,
     String? successMessage,
     bool clearAttendance = false,
     bool clearMessages = false,
+    bool clearAttendanceUnavailableMessage = false,
   }) {
     return AttendanceState(
       isLoading: isLoading ?? this.isLoading,
@@ -61,6 +68,10 @@ class AttendanceState {
       attendance: clearAttendance ? null : attendance ?? this.attendance,
       canCheckIn: canCheckIn ?? this.canCheckIn,
       canCheckOut: canCheckOut ?? this.canCheckOut,
+      batchStatus: batchStatus ?? this.batchStatus,
+      attendanceUnavailableMessage: clearAttendanceUnavailableMessage
+          ? null
+          : attendanceUnavailableMessage ?? this.attendanceUnavailableMessage,
       batchProgressPercentage:
           batchProgressPercentage ?? this.batchProgressPercentage,
       attendanceSummary: attendanceSummary ?? this.attendanceSummary,
@@ -93,9 +104,13 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         clearAttendance: response.attendance == null,
         canCheckIn: response.canCheckIn,
         canCheckOut: response.canCheckOut,
+        batchStatus: response.batchStatus,
+        attendanceUnavailableMessage: response.attendanceUnavailableMessage,
         batchProgressPercentage: response.batchProgressPercentage,
         attendanceSummary: response.attendanceSummary,
         certificateDownloadUrl: response.certificateDownloadUrl,
+        clearAttendanceUnavailableMessage:
+            response.attendanceUnavailableMessage == null,
       );
     } catch (e) {
       state = state.copyWith(

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\AttendanceStatus;
+use App\Enums\BatchStatus;
 use App\Enums\InternStatus;
 use App\Enums\UserRole;
 use App\Models\ApprovedNetwork;
@@ -39,6 +40,51 @@ class AttendanceTest extends TestCase
             'date' => '2026-06-24 00:00:00',
             'status' => AttendanceStatus::PRESENT->value,
         ]);
+    }
+
+    public function test_intern_cannot_check_in_when_batch_is_closed(): void
+    {
+        Carbon::setTestNow('2026-06-24 08:30:00');
+        $user = $this->activeInternUser();
+        $user->intern->batch->update(['status' => BatchStatus::CLOSED]);
+        $this->approvedNetworkFor($user);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-in', [
+                'device_time' => '2026-06-24T08:29:30+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'This internship batch is closed. Attendance is no longer available.');
+
+        $this->assertDatabaseMissing('attendances', [
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24 00:00:00',
+        ]);
+    }
+
+    public function test_intern_cannot_check_out_when_batch_is_archived(): void
+    {
+        Carbon::setTestNow('2026-06-24 17:00:00');
+        $user = $this->activeInternUser();
+        $user->intern->batch->update(['status' => BatchStatus::ARCHIVED]);
+        $this->approvedNetworkFor($user);
+
+        Attendance::factory()->create([
+            'intern_id' => $user->intern->id,
+            'date' => '2026-06-24',
+            'check_in_server_time' => '2026-06-24 08:30:00',
+            'status' => AttendanceStatus::PRESENT,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/attendance/check-out', [
+                'device_time' => '2026-06-24T17:00:00+03:00',
+                'wifi_ssid' => 'BJUKA_WIFI',
+                'activities' => 'Completed assigned maintenance tasks.',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'This internship batch is closed. Attendance is no longer available.');
     }
 
     public function test_check_in_at_nine_thirty_is_still_present(): void
@@ -374,6 +420,30 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('attendance_summary.expected_days', $user->intern->batch->expected_working_days)
             ->assertJsonPath('attendance_summary.attendance_rate', 0)
             ->assertJsonPath('certificate_download_url', null);
+    }
+
+    public function test_today_endpoint_marks_attendance_unavailable_for_closed_batch(): void
+    {
+        Carbon::setTestNow('2026-07-02 10:00:00');
+        $user = $this->activeInternUser();
+        $user->intern->batch->update([
+            'status' => BatchStatus::CLOSED,
+            'start_date' => '2026-06-01',
+            'end_date' => '2026-07-01',
+        ]);
+        $user->intern->update([
+            'certificate_path' => 'certificates/demo.pdf',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/attendance/today')
+            ->assertOk()
+            ->assertJsonPath('can_check_in', false)
+            ->assertJsonPath('can_check_out', false)
+            ->assertJsonPath('batch_status', BatchStatus::CLOSED->value)
+            ->assertJsonPath('attendance_unavailable_message', 'This internship batch is closed. Attendance is no longer available.')
+            ->assertJsonPath('batch_progress_percentage', 100)
+            ->assertJsonPath('certificate_download_url', url('/storage/certificates/demo.pdf'));
     }
 
     public function test_today_endpoint_returns_attendance_rate_summary(): void

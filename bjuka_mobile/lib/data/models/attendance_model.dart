@@ -54,6 +54,8 @@ class AttendanceStateResponse {
   final Attendance? attendance;
   final bool canCheckIn;
   final bool canCheckOut;
+  final String? batchStatus;
+  final String? attendanceUnavailableMessage;
   final int batchProgressPercentage;
   final AttendanceSummary attendanceSummary;
   final String? certificateDownloadUrl;
@@ -64,6 +66,8 @@ class AttendanceStateResponse {
     required this.canCheckOut,
     required this.batchProgressPercentage,
     required this.attendanceSummary,
+    this.batchStatus,
+    this.attendanceUnavailableMessage,
     this.certificateDownloadUrl,
   });
 
@@ -76,6 +80,9 @@ class AttendanceStateResponse {
           : Attendance.fromJson(attendanceJson as Map<String, dynamic>),
       canCheckIn: json['can_check_in'] == true,
       canCheckOut: json['can_check_out'] == true,
+      batchStatus: json['batch_status'] as String?,
+      attendanceUnavailableMessage:
+          json['attendance_unavailable_message'] as String?,
       batchProgressPercentage: _parseInt(json['batch_progress_percentage']),
       attendanceSummary: AttendanceSummary.fromJson(
         json['attendance_summary'] is Map<String, dynamic>
