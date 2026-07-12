@@ -854,8 +854,8 @@ const makeTemporaryPassword = () => {
                                 <div class="text-sm">
                                     <p class="font-medium">Duration</p>
                                     <p class="text-muted-foreground">
-                                        {{ batch.start_date }} to
-                                        {{ batch.end_date }}
+                                        {{ formatDate(batch.start_date) }} to
+                                        {{ formatDate(batch.end_date) }}
                                     </p>
                                 </div>
                             </div>
