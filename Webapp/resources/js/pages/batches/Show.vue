@@ -1598,7 +1598,8 @@ const makeTemporaryPassword = () => {
                                         reportFormatForm.report_format_text.trim()
                                     "
                                     class="whitespace-pre-wrap break-words font-sans text-sm leading-6"
-                                >{{ reportFormatForm.report_format_text }}</pre>
+                                >
+{{ reportFormatForm.report_format_text }}</pre
                                 >
                                 <div
                                     v-else
