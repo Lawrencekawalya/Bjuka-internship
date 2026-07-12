@@ -7,6 +7,7 @@ use App\Http\Controllers\BatchInternController;
 use App\Http\Controllers\BatchProgramWeekController;
 use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\InternshipBatchController;
 use App\Http\Controllers\ReportGenerationResetController;
 use App\Http\Controllers\UserManagementController;
@@ -16,6 +17,7 @@ Route::inertia('/', 'Welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('documentation', DocumentationController::class)->name('documentation');
 
     Route::get('attendances', [AttendanceController::class, 'index'])
         ->middleware('role:admin,hr,manager,center_director,supervisor')

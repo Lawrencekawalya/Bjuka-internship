@@ -74,7 +74,7 @@ const footerNavItems = computed<NavItem[]>(() => {
 
     items.push({
         title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
+        href: '/documentation',
         icon: BookOpen,
     });
 
