@@ -65,6 +65,7 @@ import {
     show as showBatch,
 } from '@/routes/batches';
 import type {
+    ApprovedNetwork,
     InternshipBatch,
     BatchStats,
     BatchPerformanceAnalytics,
@@ -93,8 +94,10 @@ const isAddInternOpen = ref(false);
 const isResetPasswordOpen = ref(false);
 const isCertificateOpen = ref(false);
 const isReportFormatPreviewOpen = ref(false);
+const isNetworkDialogOpen = ref(false);
 const selectedIntern = ref<Intern | null>(null);
 const selectedCertificateIntern = ref<Intern | null>(null);
+const selectedNetwork = ref<ApprovedNetwork | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 const canResetInternPassword = computed(() =>
     ['admin', 'hr'].includes(String(page.props.auth.user.role)),
@@ -132,6 +135,12 @@ const certificateForm = useForm({
 const reportFormatForm = useForm({
     report_format_text: props.batch.report_format_text || '',
     report_format_file: null as File | null,
+});
+
+const networkForm = useForm({
+    name: '',
+    ssid: '',
+    bssid: 'any',
 });
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -241,6 +250,10 @@ const batchReportGenerationResetUrl = (batchId: string) =>
     `/batches/${batchId}/report-generation-reset`;
 const reportGenerationResetUrl = (batchId: string, internId: string) =>
     `/batches/${batchId}/interns/${internId}/report-generation-reset`;
+const batchApprovedNetworksUrl = (batchId: string) =>
+    `/batches/${batchId}/approved-networks`;
+const batchApprovedNetworkUrl = (batchId: string, networkId: string | number) =>
+    `/batches/${batchId}/approved-networks/${networkId}`;
 
 const closeBatch = () => {
     if (
@@ -276,6 +289,47 @@ const addIntern = () => {
             internForm.clearErrors();
         },
     });
+};
+
+const openAddNetworkDialog = () => {
+    selectedNetwork.value = null;
+    networkForm.reset();
+    networkForm.bssid = 'any';
+    networkForm.clearErrors();
+    isNetworkDialogOpen.value = true;
+};
+
+const openEditNetworkDialog = (network: ApprovedNetwork) => {
+    selectedNetwork.value = network;
+    networkForm.name = network.name;
+    networkForm.ssid = network.ssid;
+    networkForm.bssid = network.bssid;
+    networkForm.clearErrors();
+    isNetworkDialogOpen.value = true;
+};
+
+const saveNetwork = () => {
+    const options = {
+        preserveScroll: true,
+        onSuccess: () => {
+            isNetworkDialogOpen.value = false;
+            selectedNetwork.value = null;
+            networkForm.reset();
+            networkForm.bssid = 'any';
+            networkForm.clearErrors();
+        },
+    };
+
+    if (selectedNetwork.value) {
+        networkForm.patch(
+            batchApprovedNetworkUrl(props.batch.id, selectedNetwork.value.id),
+            options,
+        );
+
+        return;
+    }
+
+    networkForm.post(batchApprovedNetworksUrl(props.batch.id), options);
 };
 
 const openResetPasswordDialog = (intern: Intern) => {
@@ -1781,7 +1835,11 @@ const makeTemporaryPassword = () => {
                         <CardHeader>
                             <div class="flex items-center justify-between">
                                 <CardTitle>Approved WiFi Networks</CardTitle>
-                                <Button size="sm">
+                                <Button
+                                    v-if="isAdmin"
+                                    size="sm"
+                                    @click="openAddNetworkDialog"
+                                >
                                     <Wifi class="mr-2 h-4 w-4" />
                                     Add Network
                                 </Button>
@@ -1822,7 +1880,12 @@ const makeTemporaryPassword = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <Button variant="ghost" size="icon">
+                                    <Button
+                                        v-if="isAdmin"
+                                        variant="ghost"
+                                        size="icon"
+                                        @click="openEditNetworkDialog(network)"
+                                    >
                                         <Settings class="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -1839,6 +1902,106 @@ const makeTemporaryPassword = () => {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Dialog v-model:open="isNetworkDialogOpen">
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    {{
+                                        selectedNetwork
+                                            ? 'Update Network'
+                                            : 'Add Network'
+                                    }}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Approved WiFi SSIDs are used to validate
+                                    intern attendance check-ins and check-outs.
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form class="grid gap-4" @submit.prevent="saveNetwork">
+                                <div class="grid gap-2">
+                                    <Label for="network_name"
+                                        >Network name</Label
+                                    >
+                                    <Input
+                                        id="network_name"
+                                        v-model="networkForm.name"
+                                        placeholder="Kabs-Uni-DIT Office WiFi"
+                                        :class="{
+                                            'border-destructive':
+                                                networkForm.errors.name,
+                                        }"
+                                    />
+                                    <p
+                                        v-if="networkForm.errors.name"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ networkForm.errors.name }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="network_ssid">SSID</Label>
+                                    <Input
+                                        id="network_ssid"
+                                        v-model="networkForm.ssid"
+                                        placeholder="BJUKA_WIFI"
+                                        :class="{
+                                            'border-destructive':
+                                                networkForm.errors.ssid,
+                                        }"
+                                    />
+                                    <p
+                                        v-if="networkForm.errors.ssid"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ networkForm.errors.ssid }}
+                                    </p>
+                                </div>
+
+                                <div class="grid gap-2">
+                                    <Label for="network_bssid">BSSID</Label>
+                                    <Input
+                                        id="network_bssid"
+                                        v-model="networkForm.bssid"
+                                        placeholder="any or 00:11:22:33:44:55"
+                                        :class="{
+                                            'border-destructive':
+                                                networkForm.errors.bssid,
+                                        }"
+                                    />
+                                    <p class="text-xs text-muted-foreground">
+                                        Use any when attendance should accept
+                                        the SSID from any router access point.
+                                    </p>
+                                    <p
+                                        v-if="networkForm.errors.bssid"
+                                        class="text-xs text-destructive"
+                                    >
+                                        {{ networkForm.errors.bssid }}
+                                    </p>
+                                </div>
+
+                                <DialogFooter>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        @click="isNetworkDialogOpen = false"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button :disabled="networkForm.processing">
+                                        {{
+                                            selectedNetwork
+                                                ? 'Update Network'
+                                                : 'Add Network'
+                                        }}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 <div v-else-if="activeTab === 'report format'">

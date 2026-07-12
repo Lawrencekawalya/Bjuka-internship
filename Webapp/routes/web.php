@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BatchApprovedNetworkController;
 use App\Http\Controllers\BatchInternController;
 use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\DashboardController;
@@ -25,6 +26,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('batches/{batch}/report-format', [BatchReportFormatController::class, 'update'])->name('batches.report-format.update');
         Route::patch('batches/{batch}/report-generation-reset', [ReportGenerationResetController::class, 'resetBatch'])
             ->name('batches.report-generation-reset.update');
+        Route::post('batches/{batch}/approved-networks', [BatchApprovedNetworkController::class, 'store'])
+            ->name('batches.approved-networks.store');
+        Route::patch('batches/{batch}/approved-networks/{network}', [BatchApprovedNetworkController::class, 'update'])
+            ->name('batches.approved-networks.update');
         Route::post('batches/{batch}/interns', [BatchInternController::class, 'store'])->name('batches.interns.store');
         Route::post('batches/{batch}/interns/{intern}/certificate', [BatchInternController::class, 'storeCertificate'])
             ->name('batches.interns.certificate.store');

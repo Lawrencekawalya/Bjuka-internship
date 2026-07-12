@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use App\Enums\BatchStatus;
 use App\Enums\InternStatus;
 use App\Enums\UserRole;
+use App\Models\ApprovedNetwork;
 use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\InternshipBatch;
@@ -101,6 +102,76 @@ class InternshipBatchTest extends TestCase
             'name' => 'New Batch Name',
             'expected_working_days' => 65,
         ]);
+    }
+
+    public function test_admin_can_add_approved_network_to_batch()
+    {
+        $batch = InternshipBatch::factory()->create();
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('batches.approved-networks.store', $batch), [
+                'name' => 'Engineering Office WiFi',
+                'ssid' => 'BJUKA_ENGINEERING',
+                'bssid' => 'any',
+            ]);
+
+        $response->assertRedirect(route('batches.show', $batch));
+        $this->assertDatabaseHas('approved_networks', [
+            'batch_id' => $batch->id,
+            'name' => 'Engineering Office WiFi',
+            'ssid' => 'BJUKA_ENGINEERING',
+            'bssid' => 'any',
+        ]);
+    }
+
+    public function test_admin_can_update_approved_network()
+    {
+        $batch = InternshipBatch::factory()->create();
+        $network = ApprovedNetwork::factory()->create([
+            'batch_id' => $batch->id,
+            'name' => 'Old Office WiFi',
+            'ssid' => 'OLD_WIFI',
+            'bssid' => 'any',
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('batches.approved-networks.update', [$batch, $network]), [
+                'name' => 'Updated Office WiFi',
+                'ssid' => 'UPDATED_WIFI',
+                'bssid' => '00:11:22:33:44:55',
+            ]);
+
+        $response->assertRedirect(route('batches.show', $batch));
+        $this->assertDatabaseHas('approved_networks', [
+            'id' => $network->id,
+            'batch_id' => $batch->id,
+            'name' => 'Updated Office WiFi',
+            'ssid' => 'UPDATED_WIFI',
+            'bssid' => '00:11:22:33:44:55',
+        ]);
+    }
+
+    public function test_non_admin_cannot_manage_approved_networks()
+    {
+        $hr = User::factory()->create(['role' => UserRole::HR]);
+        $batch = InternshipBatch::factory()->create();
+        $network = ApprovedNetwork::factory()->create(['batch_id' => $batch->id]);
+
+        $this->actingAs($hr)
+            ->post(route('batches.approved-networks.store', $batch), [
+                'name' => 'HR WiFi',
+                'ssid' => 'HR_WIFI',
+                'bssid' => 'any',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($hr)
+            ->patch(route('batches.approved-networks.update', [$batch, $network]), [
+                'name' => 'Updated HR WiFi',
+                'ssid' => 'UPDATED_HR_WIFI',
+                'bssid' => 'any',
+            ])
+            ->assertForbidden();
     }
 
     public function test_can_close_batch()
