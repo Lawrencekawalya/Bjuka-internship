@@ -143,7 +143,135 @@ class InternshipBatchController extends Controller
             'batch' => $batch,
             'stats' => $stats,
             'batch_attendances' => $batchAttendances,
+            'batch_performance' => $this->batchPerformance($batch, $elapsedWorkingDays, $activeInterns),
         ]);
+    }
+
+    private function batchPerformance(InternshipBatch $batch, int $elapsedWorkingDays, int $activeInterns): array
+    {
+        $start = $batch->start_date?->copy()->startOfDay();
+        $end = $batch->end_date ? $this->attendanceRateEndDate($batch) : null;
+
+        if (! $start || ! $end || $end->isBefore($start)) {
+            return [
+                'overview' => [
+                    'elapsed_working_days' => 0,
+                    'expected_records' => 0,
+                    'actual_records' => 0,
+                    'missing_records' => 0,
+                    'average_hours_per_attendance' => 0,
+                    'at_risk_interns' => 0,
+                ],
+                'daily_attendance' => [],
+                'status_distribution' => [],
+                'intern_performance' => [],
+            ];
+        }
+
+        $activeInternsCollection = $batch->interns()
+            ->with('user:id,name,email')
+            ->where('status', InternStatus::ACTIVE)
+            ->get();
+
+        $activeInternIds = $activeInternsCollection->pluck('id');
+
+        $attendances = Attendance::query()
+            ->whereIn('intern_id', $activeInternIds)
+            ->whereDate('date', '>=', $start)
+            ->whereDate('date', '<=', $end)
+            ->get();
+
+        $attendedAttendances = $attendances
+            ->where('status', '!=', AttendanceStatus::ABSENT);
+
+        $actualRecords = $attendedAttendances
+            ->map(fn (Attendance $attendance) => $attendance->intern_id.'|'.$attendance->date?->toDateString())
+            ->unique()
+            ->count();
+        $expectedRecords = $activeInterns * $elapsedWorkingDays;
+        $averageMinutes = (int) round($attendedAttendances->whereNotNull('work_duration_minutes')->avg('work_duration_minutes') ?? 0);
+
+        $dailyAttendance = [];
+        for ($date = $start->copy(); $date->lte($end); $date = $date->addDay()) {
+            if (! $date->isWeekday()) {
+                continue;
+            }
+
+            $dateKey = $date->toDateString();
+            $dayAttendances = $attendances->filter(fn (Attendance $attendance) => $attendance->date?->toDateString() === $dateKey);
+            $dayActualRecords = $dayAttendances
+                ->where('status', '!=', AttendanceStatus::ABSENT)
+                ->pluck('intern_id')
+                ->unique()
+                ->count();
+
+            $dailyAttendance[] = [
+                'date' => $dateKey,
+                'label' => $date->format('M j'),
+                'present' => $dayAttendances->where('status', AttendanceStatus::PRESENT)->pluck('intern_id')->unique()->count(),
+                'late' => $dayAttendances->where('status', AttendanceStatus::LATE)->pluck('intern_id')->unique()->count(),
+                'partial' => $dayAttendances->where('status', AttendanceStatus::PARTIAL)->pluck('intern_id')->unique()->count(),
+                'absent' => max($activeInterns - $dayActualRecords, 0),
+                'attendance_rate' => $activeInterns > 0 ? round(($dayActualRecords / $activeInterns) * 100) : 0,
+            ];
+        }
+
+        $statusDistribution = collect(AttendanceStatus::cases())
+            ->map(function (AttendanceStatus $status) use ($attendances) {
+                $count = $attendances->where('status', $status)->count();
+
+                return [
+                    'status' => $status->value,
+                    'count' => $count,
+                    'percentage' => $attendances->count() > 0 ? round(($count / $attendances->count()) * 100) : 0,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $internPerformance = $activeInternsCollection
+            ->map(function ($intern) use ($attendances, $elapsedWorkingDays) {
+                $internAttendances = $attendances->where('intern_id', $intern->id);
+                $attendedDays = $internAttendances
+                    ->where('status', '!=', AttendanceStatus::ABSENT)
+                    ->pluck('date')
+                    ->map(fn ($date) => $date?->toDateString())
+                    ->unique()
+                    ->count();
+                $totalMinutes = (int) $internAttendances
+                    ->where('status', '!=', AttendanceStatus::ABSENT)
+                    ->sum('work_duration_minutes');
+
+                return [
+                    'id' => $intern->id,
+                    'name' => $intern->user?->name ?? 'Unknown intern',
+                    'email' => $intern->user?->email,
+                    'attended_days' => $attendedDays,
+                    'missed_days' => max($elapsedWorkingDays - $attendedDays, 0),
+                    'attendance_rate' => $elapsedWorkingDays > 0 ? round(($attendedDays / $elapsedWorkingDays) * 100) : 0,
+                    'total_hours' => round($totalMinutes / 60, 1),
+                    'last_attended_on' => $internAttendances
+                        ->where('status', '!=', AttendanceStatus::ABSENT)
+                        ->sortByDesc('date')
+                        ->first()?->date?->toDateString(),
+                ];
+            })
+            ->sortBy('attendance_rate')
+            ->values();
+
+        return [
+            'overview' => [
+                'elapsed_working_days' => $elapsedWorkingDays,
+                'expected_records' => $expectedRecords,
+                'actual_records' => $actualRecords,
+                'missing_records' => max($expectedRecords - $actualRecords, 0),
+                'average_hours_per_attendance' => round($averageMinutes / 60, 1),
+                'at_risk_interns' => $internPerformance->where('attendance_rate', '<', 75)->count(),
+            ],
+            'daily_attendance' => $dailyAttendance,
+            'status_distribution' => $statusDistribution,
+            'intern_performance' => $internPerformance->all(),
+        ];
     }
 
     private function elapsedWorkingDays(InternshipBatch $batch): int

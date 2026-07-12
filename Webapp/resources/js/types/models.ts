@@ -59,6 +59,41 @@ export interface BatchStats {
     progress: number;
 }
 
+export interface BatchPerformanceAnalytics {
+    overview: {
+        elapsed_working_days: number;
+        expected_records: number;
+        actual_records: number;
+        missing_records: number;
+        average_hours_per_attendance: number;
+        at_risk_interns: number;
+    };
+    daily_attendance: {
+        date: string;
+        label: string;
+        present: number;
+        late: number;
+        partial: number;
+        absent: number;
+        attendance_rate: number;
+    }[];
+    status_distribution: {
+        status: string;
+        count: number;
+        percentage: number;
+    }[];
+    intern_performance: {
+        id: string;
+        name: string;
+        email: string | null;
+        attended_days: number;
+        missed_days: number;
+        attendance_rate: number;
+        total_hours: number;
+        last_attended_on: string | null;
+    }[];
+}
+
 export interface AttendanceRecord {
     id: string;
     date: string;

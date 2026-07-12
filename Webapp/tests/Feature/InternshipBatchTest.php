@@ -209,6 +209,7 @@ class InternshipBatchTest extends TestCase
                 'intern_id' => $record['intern']->id,
                 'date' => $record['date'],
                 'check_in_server_time' => $record['date'].' 08:30:00',
+                'work_duration_minutes' => 480,
                 'status' => AttendanceStatus::PRESENT,
             ]);
         }
@@ -219,6 +220,19 @@ class InternshipBatchTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('batches/Show')
                 ->where('stats.attendance_rate', 70)
+                ->where('batch_performance.overview.expected_records', 10)
+                ->where('batch_performance.overview.actual_records', 7)
+                ->where('batch_performance.overview.missing_records', 3)
+                ->where('batch_performance.overview.average_hours_per_attendance', 8)
+                ->where('batch_performance.overview.at_risk_interns', 1)
+                ->has('batch_performance.daily_attendance', 5)
+                ->where('batch_performance.daily_attendance.0.attendance_rate', 100)
+                ->where('batch_performance.daily_attendance.3.attendance_rate', 50)
+                ->where('batch_performance.status_distribution.0.status', AttendanceStatus::PRESENT->value)
+                ->where('batch_performance.status_distribution.0.count', 7)
+                ->has('batch_performance.intern_performance', 2)
+                ->where('batch_performance.intern_performance.0.attendance_rate', 60)
+                ->where('batch_performance.intern_performance.1.attendance_rate', 80)
                 ->has('batch_attendances', 7)
             );
     }

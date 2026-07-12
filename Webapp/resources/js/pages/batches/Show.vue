@@ -67,6 +67,7 @@ import {
 import type {
     InternshipBatch,
     BatchStats,
+    BatchPerformanceAnalytics,
     BreadcrumbItem,
     Intern,
     Auth,
@@ -81,6 +82,7 @@ interface Props {
     batch: InternshipBatch;
     stats: BatchStats;
     batch_attendances: AttendanceRecord[];
+    batch_performance: BatchPerformanceAnalytics;
 }
 
 const props = defineProps<Props>();
@@ -96,6 +98,14 @@ const selectedCertificateIntern = ref<Intern | null>(null);
 const isAdmin = computed(() => String(page.props.auth.user.role) === 'admin');
 const canResetInternPassword = computed(() =>
     ['admin', 'hr'].includes(String(page.props.auth.user.role)),
+);
+const highestDailyAttendanceCount = computed(() =>
+    Math.max(
+        1,
+        ...props.batch_performance.daily_attendance.map(
+            (day) => day.present + day.late + day.partial + day.absent,
+        ),
+    ),
 );
 
 const internForm = useForm({
@@ -1413,17 +1423,314 @@ const makeTemporaryPassword = () => {
                     </Card>
                 </div>
 
-                <div v-else-if="activeTab === 'analytics'">
+                <div v-else-if="activeTab === 'analytics'" class="space-y-4">
+                    <div class="grid gap-4 md:grid-cols-4">
+                        <Card>
+                            <CardHeader class="pb-2">
+                                <CardTitle class="text-sm font-medium"
+                                    >Expected Attendance</CardTitle
+                                >
+                            </CardHeader>
+                            <CardContent>
+                                <div class="text-2xl font-bold">
+                                    {{
+                                        batch_performance.overview
+                                            .expected_records
+                                    }}
+                                </div>
+                                <p class="text-xs text-muted-foreground">
+                                    {{
+                                        batch_performance.overview
+                                            .elapsed_working_days
+                                    }}
+                                    elapsed working days
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader class="pb-2">
+                                <CardTitle class="text-sm font-medium"
+                                    >Recorded Attendance</CardTitle
+                                >
+                            </CardHeader>
+                            <CardContent>
+                                <div class="text-2xl font-bold">
+                                    {{
+                                        batch_performance.overview
+                                            .actual_records
+                                    }}
+                                </div>
+                                <p class="text-xs text-muted-foreground">
+                                    Non-absent intern days
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader class="pb-2">
+                                <CardTitle class="text-sm font-medium"
+                                    >Missing Attendance</CardTitle
+                                >
+                            </CardHeader>
+                            <CardContent>
+                                <div class="text-2xl font-bold">
+                                    {{
+                                        batch_performance.overview
+                                            .missing_records
+                                    }}
+                                </div>
+                                <p class="text-xs text-muted-foreground">
+                                    Expected days not attended
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader class="pb-2">
+                                <CardTitle class="text-sm font-medium"
+                                    >At Risk Interns</CardTitle
+                                >
+                            </CardHeader>
+                            <CardContent>
+                                <div class="text-2xl font-bold">
+                                    {{
+                                        batch_performance.overview
+                                            .at_risk_interns
+                                    }}
+                                </div>
+                                <p class="text-xs text-muted-foreground">
+                                    Below 75% attendance
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div class="grid gap-4 lg:grid-cols-3">
+                        <Card class="lg:col-span-2">
+                            <CardHeader>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle
+                                            >Daily Attendance Trend</CardTitle
+                                        >
+                                        <CardDescription>
+                                            Present, late, partial, and missed
+                                            attendance by working day.
+                                        </CardDescription>
+                                    </div>
+                                    <BarChart3
+                                        class="h-5 w-5 text-muted-foreground"
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div
+                                    v-if="
+                                        batch_performance.daily_attendance
+                                            .length > 0
+                                    "
+                                    class="space-y-3"
+                                >
+                                    <div
+                                        v-for="day in batch_performance.daily_attendance"
+                                        :key="day.date"
+                                        class="grid items-center gap-3 sm:grid-cols-[64px_1fr_48px]"
+                                    >
+                                        <div
+                                            class="text-xs font-medium text-muted-foreground"
+                                        >
+                                            {{ day.label }}
+                                        </div>
+                                        <div
+                                            class="flex h-3 overflow-hidden rounded-full bg-muted"
+                                        >
+                                            <div
+                                                class="bg-emerald-500"
+                                                :style="{
+                                                    width:
+                                                        (day.present /
+                                                            highestDailyAttendanceCount) *
+                                                            100 +
+                                                        '%',
+                                                }"
+                                            ></div>
+                                            <div
+                                                class="bg-amber-500"
+                                                :style="{
+                                                    width:
+                                                        (day.late /
+                                                            highestDailyAttendanceCount) *
+                                                            100 +
+                                                        '%',
+                                                }"
+                                            ></div>
+                                            <div
+                                                class="bg-sky-500"
+                                                :style="{
+                                                    width:
+                                                        (day.partial /
+                                                            highestDailyAttendanceCount) *
+                                                            100 +
+                                                        '%',
+                                                }"
+                                            ></div>
+                                            <div
+                                                class="bg-rose-500"
+                                                :style="{
+                                                    width:
+                                                        (day.absent /
+                                                            highestDailyAttendanceCount) *
+                                                            100 +
+                                                        '%',
+                                                }"
+                                            ></div>
+                                        </div>
+                                        <div
+                                            class="text-right text-xs font-medium"
+                                        >
+                                            {{ day.attendance_rate }}%
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    v-else
+                                    class="flex min-h-[180px] items-center justify-center text-sm text-muted-foreground"
+                                >
+                                    No elapsed working days to analyze yet.
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Status Distribution</CardTitle>
+                                <CardDescription>
+                                    All attendance records in this batch period.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent class="space-y-4">
+                                <div
+                                    v-for="status in batch_performance.status_distribution"
+                                    :key="status.status"
+                                    class="space-y-1.5"
+                                >
+                                    <div
+                                        class="flex items-center justify-between text-sm"
+                                    >
+                                        <span class="capitalize">{{
+                                            status.status
+                                        }}</span>
+                                        <span class="text-muted-foreground">
+                                            {{ status.count }} ({{
+                                                status.percentage
+                                            }}%)
+                                        </span>
+                                    </div>
+                                    <div
+                                        class="h-2 overflow-hidden rounded-full bg-muted"
+                                    >
+                                        <div
+                                            class="h-full bg-primary"
+                                            :style="{
+                                                width:
+                                                    status.percentage + '%',
+                                            }"
+                                        ></div>
+                                    </div>
+                                </div>
+                                <Separator />
+                                <div
+                                    class="flex items-center justify-between text-sm"
+                                >
+                                    <span>Average hours per attendance</span>
+                                    <span class="font-medium">
+                                        {{
+                                            batch_performance.overview
+                                                .average_hours_per_attendance
+                                        }}h
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <Card>
                         <CardHeader>
-                            <CardTitle>Batch Performance Analytics</CardTitle>
+                            <CardTitle>Intern Performance</CardTitle>
+                            <CardDescription>
+                                Ranked from lowest to highest attendance rate.
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div
-                                class="flex h-[200px] items-center justify-center text-muted-foreground"
-                            >
-                                <BarChart3 class="mr-2 h-4 w-4" />
-                                Analytics charts will be integrated here.
+                            <div class="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Intern</TableHead>
+                                            <TableHead>Rate</TableHead>
+                                            <TableHead>Attended</TableHead>
+                                            <TableHead>Missed</TableHead>
+                                            <TableHead>Total Hours</TableHead>
+                                            <TableHead>Last Attended</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        <TableRow
+                                            v-for="intern in batch_performance.intern_performance"
+                                            :key="intern.id"
+                                        >
+                                            <TableCell>
+                                                <div class="font-medium">
+                                                    {{ intern.name }}
+                                                </div>
+                                                <div
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    {{ intern.email || '—' }}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    :variant="
+                                                        intern.attendance_rate <
+                                                        75
+                                                            ? 'destructive'
+                                                            : 'default'
+                                                    "
+                                                >
+                                                    {{
+                                                        intern.attendance_rate
+                                                    }}%
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                {{ intern.attended_days }}
+                                            </TableCell>
+                                            <TableCell>
+                                                {{ intern.missed_days }}
+                                            </TableCell>
+                                            <TableCell>
+                                                {{ intern.total_hours }}h
+                                            </TableCell>
+                                            <TableCell>
+                                                {{
+                                                    formatDate(
+                                                        intern.last_attended_on,
+                                                    )
+                                                }}
+                                            </TableCell>
+                                        </TableRow>
+                                        <TableEmpty
+                                            v-if="
+                                                batch_performance
+                                                    .intern_performance
+                                                    .length === 0
+                                            "
+                                            :colspan="6"
+                                        >
+                                            No active interns are available for
+                                            analytics.
+                                        </TableEmpty>
+                                    </TableBody>
+                                </Table>
                             </div>
                         </CardContent>
                     </Card>
