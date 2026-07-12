@@ -11,6 +11,7 @@ use App\Services\InternshipReportDraftService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -97,6 +98,12 @@ class InternReportController extends Controller
         } catch (HttpException $exception) {
             throw $exception;
         } catch (RuntimeException $exception) {
+            Log::error('Intern report generation failed.', [
+                'intern_id' => $intern->id,
+                'report_id' => $report?->id,
+                'message' => $exception->getMessage(),
+            ]);
+
             $report?->update([
                 'status' => 'failed',
                 'failure_reason' => $exception->getMessage(),

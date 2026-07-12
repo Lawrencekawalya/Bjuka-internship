@@ -120,6 +120,16 @@ class ReportNotifier extends Notifier<ReportState> {
       if (data is Map<String, dynamic> && data['message'] is String) {
         return data['message'];
       }
+
+      if (error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout) {
+        return 'Report generation is taking longer than expected. Please try refreshing in a moment.';
+      }
+
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return 'Unable to reach the server. Please check your connection.';
+      }
     }
 
     return 'Something went wrong. Please try again.';

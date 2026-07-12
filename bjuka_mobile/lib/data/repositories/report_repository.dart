@@ -12,7 +12,13 @@ class ReportRepository {
   }
 
   Future<GeneratedReportResponse> generate() async {
-    final response = await _dio.post('/intern/report/generate');
+    final response = await _dio.post(
+      '/intern/report/generate',
+      options: Options(
+        sendTimeout: const Duration(seconds: 120),
+        receiveTimeout: const Duration(seconds: 120),
+      ),
+    );
     return GeneratedReportResponse.fromJson(response.data);
   }
 

@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Intern;
 use App\Models\InternReport;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\IOFactory;
@@ -45,7 +46,17 @@ class InternshipReportDraftService
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('OpenAI could not generate the report draft.');
+            Log::warning('OpenAI report generation request failed.', [
+                'intern_id' => $intern->id,
+                'status' => $response->status(),
+                'response' => $response->json() ?? $response->body(),
+            ]);
+
+            $message = data_get($response->json(), 'error.message');
+
+            throw new RuntimeException(is_string($message) && $message !== ''
+                ? 'OpenAI error: '.$message
+                : 'OpenAI could not generate the report draft.');
         }
 
         return $this->normalizeDraft($this->extractText($response->json()), $context);
@@ -217,6 +228,11 @@ PROMPT;
         $decoded = json_decode($rawDraft, true);
 
         if (! is_array($decoded)) {
+            Log::warning('OpenAI report generation returned invalid JSON.', [
+                'intern_id' => $context['intern']['name'] ?? null,
+                'draft' => mb_substr($rawDraft, 0, 2000),
+            ]);
+
             throw new RuntimeException('OpenAI returned invalid report JSON.');
         }
 
@@ -233,6 +249,11 @@ PROMPT;
             ->all();
 
         if ($sections === []) {
+            Log::warning('OpenAI report generation returned no sections.', [
+                'intern_id' => $context['intern']['name'] ?? null,
+                'draft' => $decoded,
+            ]);
+
             throw new RuntimeException('OpenAI returned an empty report draft.');
         }
 
