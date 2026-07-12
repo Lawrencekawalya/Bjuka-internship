@@ -9,6 +9,7 @@ use App\Http\Controllers\BatchReportFormatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InternshipBatchController;
 use App\Http\Controllers\ReportGenerationResetController;
+use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
@@ -49,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('batches.interns.supervisors.update');
         Route::patch('batches/{batch}/interns/{intern}/report-generation-reset', [ReportGenerationResetController::class, 'update'])
             ->name('batches.interns.report-generation-reset.update');
+        Route::resource('users', UserManagementController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
         Route::resource('batches', InternshipBatchController::class)->except(['index', 'show']);
     });
 

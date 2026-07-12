@@ -3,9 +3,9 @@ import { Link, usePage } from '@inertiajs/vue3';
 import {
     BookOpen,
     CalendarCheck,
-    FolderGit2,
     LayoutGrid,
     Layers,
+    UserCog,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -61,18 +61,25 @@ const mainNavItems = computed<NavItem[]>(() => {
     return items;
 });
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
+const footerNavItems = computed<NavItem[]>(() => {
+    const items: NavItem[] = [];
+
+    if (String(userRole.value) === 'admin') {
+        items.push({
+            title: 'User Management',
+            href: '/users',
+            icon: UserCog,
+        });
+    }
+
+    items.push({
         title: 'Documentation',
         href: 'https://laravel.com/docs/starter-kits#vue',
         icon: BookOpen,
-    },
-];
+    });
+
+    return items;
+});
 </script>
 
 <template>
